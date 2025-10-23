@@ -363,7 +363,7 @@ class _AnnouncementBottomSheetState extends State<_AnnouncementBottomSheet> {
     try {
       final service = ISchoolPlusService.instance;
       final detail = await service.connector
-          .getAnnouncementDetail(widget.announcement);
+          .getAnnouncementDetail(widget.announcement, courseId: widget.courseId);
 
       if (detail == null) {
         setState(() {
@@ -392,13 +392,12 @@ class _AnnouncementBottomSheetState extends State<_AnnouncementBottomSheet> {
     try {
       final service = ISchoolPlusService.instance;
       final detail = await service.connector
-          .getAnnouncementDetail(widget.announcement);
+          .getAnnouncementDetail(widget.announcement, courseId: widget.courseId);
 
       if (detail != null) {
         final cacheService = ISchoolPlusCacheService();
-        final courseId = widget.announcement.cid ?? '';
         final announcementId = widget.announcement.nid ?? '';
-        await cacheService.cacheAnnouncementDetail(courseId, announcementId, detail);
+        await cacheService.cacheAnnouncementDetail(widget.courseId, announcementId, detail);
       }
     } catch (e) {
       print('[AnnouncementDialog] Failed to update cache: $e');
@@ -420,22 +419,52 @@ class _AnnouncementBottomSheetState extends State<_AnnouncementBottomSheet> {
       final service = ISchoolPlusService.instance;
       
       debugPrint('[AnnouncementAttachment] Starting download: $fileName');
-      debugPrint('[AnnouncementAttachment] URL: $fileUrl');
+      debugPrint('[AnnouncementAttachment] Original URL: $fileUrl');
 
+      // 先更新公告內容以獲取最新的附件 URL（使用高優先級插隊）
+      debugPrint('[AnnouncementAttachment] Updating announcement detail with high priority...');
+      final updatedDetail = await service.connector
+          .getAnnouncementDetail(widget.announcement, courseId: widget.courseId, highPriority: true);
+      
+      if (updatedDetail == null) {
+        throw Exception('無法獲取最新的公告內容');
+      }
+      
+      // 從更新後的詳情中找到對應的附件 URL
+      String? updatedFileUrl;
+      for (final entry in updatedDetail.files.entries) {
+        if (entry.key == fileName) {
+          updatedFileUrl = entry.value;
+          break;
+        }
+      }
+      
+      if (updatedFileUrl == null) {
+        throw Exception('找不到附件：$fileName');
+      }
+      
+      debugPrint('[AnnouncementAttachment] Updated URL: $updatedFileUrl');
+      
+      // 更新緩存中的公告詳情
+      final cacheService = ISchoolPlusCacheService();
+      final announcementId = widget.announcement.nid ?? '';
+      await cacheService.cacheAnnouncementDetail(widget.courseId, announcementId, updatedDetail);
+      
+      // 更新當前顯示的詳情
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('開始下載：$fileName')),
-        );
+        setState(() {
+          _detail = updatedDetail;
+        });
       }
 
-      // 使用與教材相同的下載服務
+      // 使用與教材相同的下載服務，使用更新後的 URL
       final courseName = widget.announcement.subject; // 使用公告標題作為目錄名
       final filePath = await FileDownloadService.download(
         connector: service.connector,
-        url: fileUrl,
+        url: updatedFileUrl,
         dirName: courseName,
         name: fileName,
-        referer: fileUrl,
+        referer: updatedFileUrl,
         onProgress: (current, total) {
           if (total > 0) {
             setState(() {
@@ -445,15 +474,11 @@ class _AnnouncementBottomSheetState extends State<_AnnouncementBottomSheet> {
         },
       );
 
-      // 更新已下載檔案列表
-      final downloadedFileName = filePath.split(Platform.pathSeparator).last;
-      setState(() {
-        _downloadedFiles[downloadedFileName] = filePath;
-        _downloadProgress.remove(fileName);
-      });
-
       // 重新載入已下載檔案列表
       await _loadDownloadedFiles();
+
+      // 更新已下載檔案列表
+      final downloadedFileName = filePath.split(Platform.pathSeparator).last;
 
       debugPrint('[AnnouncementAttachment] Download completed: $downloadedFileName');
 
@@ -482,10 +507,12 @@ class _AnnouncementBottomSheetState extends State<_AnnouncementBottomSheet> {
         );
       }
     } finally {
-      setState(() {
-        _downloadingFiles[fileName] = false;
-        _downloadProgress.remove(fileName);
-      });
+      if (mounted) {
+        setState(() {
+          _downloadingFiles[fileName] = false;
+          _downloadProgress.remove(fileName);
+        });
+      }
     }
   }
 
@@ -568,9 +595,8 @@ class _AnnouncementBottomSheetState extends State<_AnnouncementBottomSheet> {
       final success = await FileStore.deleteFile(path);
       
       if (success) {
-        setState(() {
-          _downloadedFiles.remove(fileName);
-        });
+        // 重新載入已下載檔案列表以確保 UI 同步
+        await _loadDownloadedFiles();
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -842,16 +868,18 @@ class _AnnouncementBottomSheetState extends State<_AnnouncementBottomSheet> {
               
               // 檢查檔案是否已下載（需要檢查可能的不同檔名）
               String? downloadedPath;
+              String? savedFileName;
               bool isDownloaded = false;
               
               // 嘗試找到匹配的已下載檔案
               for (final entry in _downloadedFiles.entries) {
-                final savedFileName = entry.key;
+                final currentSavedFileName = entry.key;
                 // 移除擴展名後比對（因為下載後可能會自動加上擴展名）
                 final baseFileName = fileName.split('.').first;
-                final baseSavedFileName = savedFileName.split('.').first;
+                final baseSavedFileName = currentSavedFileName.split('.').first;
                 if (baseSavedFileName.contains(baseFileName) || baseFileName.contains(baseSavedFileName)) {
                   downloadedPath = entry.value;
+                  savedFileName = currentSavedFileName;
                   isDownloaded = true;
                   break;
                 }
@@ -889,7 +917,7 @@ class _AnnouncementBottomSheetState extends State<_AnnouncementBottomSheet> {
                           )
                         : isDownloaded
                             ? GestureDetector(
-                                onTap: () => _showFileActions(fileName, downloadedPath!),
+                                onTap: () => _showFileActions(savedFileName!, downloadedPath!),
                                 child: const Icon(Icons.more_vert, size: 20, color: Colors.grey),
                               )
                             : const Icon(Icons.download, size: 20),

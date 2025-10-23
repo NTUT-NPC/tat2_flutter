@@ -2,8 +2,7 @@ name: Flutter CI
 
 env:
   TZ: Asia/Taipei
-  SIGN_ON_PUSH_IOS: false
-  SIGN_ON_PUSH_ANDROID: false
+  SIGN_ON_PUSH: 'false'
 
 on:
   push:
@@ -12,31 +11,28 @@ on:
     branches: [ "master" ]
   workflow_dispatch:
     inputs:
-      build_android:
-        description: 'Build Android?'
+      platform:
+        description: 'Which platform to build?'
         required: true
-        default: true
-        type: boolean
-      build_ios:
-        description: 'Build iOS?'
+        default: 'both'
+        type: choice
+        options:
+        - android
+        - ios
+        - both
+      use_signing:
+        description: 'Attempt to code sign? (Requires secrets to be set)'
         required: true
-        default: true
-        type: boolean
-      sign_android:
-        description: 'Attempt to sign Android? (Requires secrets)'
-        required: true
-        default: false
-        type: boolean
-      sign_ios:
-        description: 'Attempt to sign iOS? (Requires secrets)'
-        required: true
-        default: false
-        type: boolean
+        default: 'false'
+        type: choice
+        options:
+        - 'true'
+        - 'false'
 
 jobs:
   build-android:
     name: Build Flutter (Android)
-    if: github.event_name != 'workflow_dispatch' || inputs.build_android == true
+    if: github.event_name != 'workflow_dispatch' || (inputs.platform == 'android' || inputs.platform == 'both')
     runs-on: ubuntu-latest
     
     steps:
@@ -62,15 +58,23 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
         
-      - name: Decode Android Keystore
-        if: (github.event_name == 'workflow_dispatch' && inputs.sign_android == true) || (github.event_name != 'workflow_dispatch' && env.SIGN_ON_PUSH_ANDROID == 'true')
+      - name: Set Android Signing Flag
         run: |
-          echo "${{ secrets.ANDROID_SIGN_KEY_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
+          if [[ "${{ secrets.ANDROID_SIGNING_KEY_BASE64 }}" != "" && ( ("${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.use_signing }}" == "true") || ("${{ github.event_name }}" != "workflow_dispatch" && "${{ env.SIGN_ON_PUSH }}" == "true") ) ]]; then
+            echo "SHOULD_SIGN_ANDROID=true" >> $GITHUB_ENV
+          else
+            echo "SHOULD_SIGN_ANDROID=false" >> $GITHUB_ENV
+          fi
+
+      - name: Decode Android Keystore
+        if: env.SHOULD_SIGN_ANDROID == 'true'
+        run: |
+          echo "${{ secrets.ANDROID_SIGNING_KEY_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
 
       - name: Create key.properties
-        if: (github.event_name == 'workflow_dispatch' && inputs.sign_android == true) || (github.event_name != 'workflow_dispatch' && env.SIGN_ON_PUSH_ANDROID == 'true')
+        if: env.SHOULD_SIGN_ANDROID == 'true'
         run: |
-          echo "storeFile=app/upload-keystore.jks" > android/key.properties
+          echo "storeFile=upload-keystore.jks" > android/key.properties
           echo "storePassword=${{ secrets.ANDROID_SIGNING_STORE_PASSWORD }}" >> android/key.properties
           echo "keyAlias=${{ secrets.ANDROID_SIGNING_KEY_ALIAS }}" >> android/key.properties
           echo "keyPassword=${{ secrets.ANDROID_SIGNING_KEY_PASSWORD }}" >> android/key.properties
@@ -86,7 +90,7 @@ jobs:
 
   build-ios:
     name: Build Flutter (iOS)
-    if: github.event_name != 'workflow_dispatch' || inputs.build_ios == true
+    if: github.event_name != 'workflow_dispatch' || (inputs.platform == 'ios' || inputs.platform == 'both')
     runs-on: macos-latest
 
     steps:
@@ -106,8 +110,16 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
         
+      - name: Set iOS Signing Flag
+        run: |
+          if [[ "${{ secrets.IOS_BUILD_CERTIFICATE_BASE64 }}" != "" && ( ("${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.use_signing }}" == "true") || ("${{ github.event_name }}" != "workflow_dispatch" && "${{ env.SIGN_ON_PUSH }}" == "true") ) ]]; then
+            echo "SHOULD_SIGN_IOS=true" >> $GITHUB_ENV
+          else
+            echo "SHOULD_SIGN_IOS=false" >> $GITHUB_ENV
+          fi
+
       - name: Import Code Signing Files
-        if: (github.event_name == 'workflow_dispatch' && inputs.sign_ios == true) || (github.event_name != 'workflow_dispatch' && env.SIGN_ON_PUSH_IOS == 'true')
+        if: env.SHOULD_SIGN_IOS == 'true'
         uses: apple-actions/import-codesign-certs@v3
         with:
           p12-base64: ${{ secrets.IOS_BUILD_CERTIFICATE_BASE64 }}
@@ -115,15 +127,15 @@ jobs:
           provisioning-profiles-base64: ${{ secrets.IOS_BUILD_PROVISION_PROFILE_BASE64 }}
 
       - name: Build iOS IPA (Signed)
-        if: (github.event_name == 'workflow_dispatch' && inputs.sign_ios == true) || (github.event_name != 'workflow_dispatch' && env.SIGN_ON_PUSH_IOS == 'true')
+        if: env.SHOULD_SIGN_IOS == 'true'
         run: flutter build ipa --release
 
       - name: Build iOS IPA (Unsigned)
-        if: (github.event_name == 'workflow_dispatch' && inputs.sign_ios == false) || (github.event_name != 'workflow_dispatch' && env.SIGN_ON_PUSH_IOS == 'false')
+        if: env.SHOULD_SIGN_IOS == 'false'
         run: flutter build ipa --release --no-codesign
 
       - name: Upload IPA Artifact
-        if: (github.event_name == 'workflow_dispatch' && inputs.sign_ios == true) || (github.event_name != 'workflow_dispatch' && env.SIGN_ON_PUSH_IOS == 'true')
+        if: env.SHOULD_SIGN_IOS == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: release-ipa-${{ env.BUILD_TIMESTAMP }}

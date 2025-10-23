@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -604,7 +605,8 @@ class _CourseTablePageState extends State<CourseTablePage> {
     // 保存用戶的選擇
     _saveSelectedSemester(year, semester);
     
-    _loadCourseTable();
+    // 強制刷新課表
+    _loadCourseTable(forceRefresh: true);
   }
   
   /// 保存用戶選擇的學期
@@ -638,6 +640,56 @@ class _CourseTablePageState extends State<CourseTablePage> {
     // 判斷是否為無課號課程(如班會課、導師時間等)
     final hasNoCourseId = courseId.isEmpty || courseId.startsWith('NO_ID_');
     
+    // 解析上課時間
+    String timeInfo = '';
+    try {
+      final scheduleJson = course['schedule'] as String?;
+      if (scheduleJson != null && scheduleJson.isNotEmpty) {
+        final schedule = json.decode(scheduleJson) as Map<String, dynamic>;
+        final List<String> timeParts = [];
+        
+        // 節次時間對應表
+        const Map<String, String> sectionTimeMap = {
+          '1': '08:10-09:00',
+          '2': '09:10-10:00',
+          '3': '10:10-11:00',
+          '4': '11:10-12:00',
+          'N': '12:10-13:00',
+          '5': '13:10-14:00',
+          '6': '14:10-15:00',
+          '7': '15:10-16:00',
+          '8': '16:10-17:00',
+          '9': '17:10-18:00',
+          'A': '18:30-19:20',
+          'B': '19:25-20:15',
+          'C': '20:20-21:10',
+          'D': '21:15-22:05',
+        };
+        
+        schedule.forEach((day, sections) {
+          if (sections == null || sections.toString().trim().isEmpty) return;
+          
+          final sectionList = sections.toString().trim().split(' ');
+          if (sectionList.isEmpty) return;
+          
+          // 取得第一節和最後一節的時間
+          final firstSection = sectionList.first;
+          final lastSection = sectionList.last;
+          
+          final startTime = sectionTimeMap[firstSection]?.split('-')[0] ?? '';
+          final endTime = sectionTimeMap[lastSection]?.split('-')[1] ?? '';
+          
+          if (startTime.isNotEmpty && endTime.isNotEmpty) {
+            timeParts.add('$day $startTime-$endTime');
+          }
+        });
+        
+        timeInfo = timeParts.join('、');
+      }
+    } catch (e) {
+      debugPrint('[CourseTable] 解析課程時間失敗: $e');
+    }
+    
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -648,12 +700,18 @@ class _CourseTablePageState extends State<CourseTablePage> {
           children: [
             // 只有有課號的課程才顯示課號
             if (!hasNoCourseId)
-              Text('課號:$courseId'),
-            Text('學分:${course['credits']} / 時數:${course['hours']}'),
+              Text('課號：$courseId'),
+            Text('學分：${course['credits']} / 時數：${course['hours']}'),
             if (course['instructor']?.isNotEmpty == true)
               Text('教師：${course['instructor']}'),
             if (course['classroom']?.isNotEmpty == true)
-              Text('教室：${course['classroom']}'),
+              Text(
+                '教室：${course['classroom']}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            if (timeInfo.isNotEmpty)
+              Text('時間：$timeInfo'),
             if (course['required']?.isNotEmpty == true)
               Text('修別：${course['required']}'),
           ],

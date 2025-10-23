@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:provider/provider.dart';
+import 'package:auto_size_text/auto_size_text.dart';
 import '../services/course_color_service.dart';
 import '../services/theme_settings_service.dart';
 
@@ -507,32 +508,44 @@ class _WeeklyCourseTableClassicState extends State<WeeklyCourseTableClassic> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Text(
-                  courseName,
-                  style: TextStyle(
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w600,
-                    color: textColor,
-                    height: 1.2,
-                    letterSpacing: 0.2,
+                // 課程名稱（使用 AutoSizeText 自動調整大小）
+                Flexible(
+                  flex: course['classroom']?.isNotEmpty == true ? 3 : 1,
+                  child: AutoSizeText(
+                    courseName,
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w600,
+                      color: textColor,
+                      height: 1.2,
+                      letterSpacing: 0.2,
+                    ),
+                    minFontSize: 8,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    group: AutoSizeGroup(), // 讓同一卡片內的文字大小協調
                   ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
                 ),
                 if (course['classroom']?.isNotEmpty == true) ...[
                   const SizedBox(height: 3),
-                  Text(
-                    course['classroom'],
-                    style: TextStyle(
-                      fontSize: 8.5,
-                      color: textColor.withOpacity(0.85),
-                      fontWeight: FontWeight.w500,
-                      letterSpacing: 0.1,
+                  // 教室（使用 AutoSizeText 自動調整大小）
+                  Flexible(
+                    flex: 2,
+                    child: AutoSizeText(
+                      course['classroom'],
+                      style: TextStyle(
+                        fontSize: 8.5,
+                        color: textColor.withOpacity(0.85),
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 0.1,
+                      ),
+                      minFontSize: 7,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      group: AutoSizeGroup(),
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
                   ),
                 ],
               ],
