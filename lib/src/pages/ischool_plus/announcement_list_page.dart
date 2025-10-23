@@ -445,15 +445,11 @@ class _AnnouncementBottomSheetState extends State<_AnnouncementBottomSheet> {
         },
       );
 
-      // 更新已下載檔案列表
-      final downloadedFileName = filePath.split(Platform.pathSeparator).last;
-      setState(() {
-        _downloadedFiles[downloadedFileName] = filePath;
-        _downloadProgress.remove(fileName);
-      });
-
       // 重新載入已下載檔案列表
       await _loadDownloadedFiles();
+
+      // 更新已下載檔案列表
+      final downloadedFileName = filePath.split(Platform.pathSeparator).last;
 
       debugPrint('[AnnouncementAttachment] Download completed: $downloadedFileName');
 
@@ -482,10 +478,12 @@ class _AnnouncementBottomSheetState extends State<_AnnouncementBottomSheet> {
         );
       }
     } finally {
-      setState(() {
-        _downloadingFiles[fileName] = false;
-        _downloadProgress.remove(fileName);
-      });
+      if (mounted) {
+        setState(() {
+          _downloadingFiles[fileName] = false;
+          _downloadProgress.remove(fileName);
+        });
+      }
     }
   }
 
@@ -568,9 +566,8 @@ class _AnnouncementBottomSheetState extends State<_AnnouncementBottomSheet> {
       final success = await FileStore.deleteFile(path);
       
       if (success) {
-        setState(() {
-          _downloadedFiles.remove(fileName);
-        });
+        // 重新載入已下載檔案列表以確保 UI 同步
+        await _loadDownloadedFiles();
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -842,16 +839,18 @@ class _AnnouncementBottomSheetState extends State<_AnnouncementBottomSheet> {
               
               // 檢查檔案是否已下載（需要檢查可能的不同檔名）
               String? downloadedPath;
+              String? savedFileName;
               bool isDownloaded = false;
               
               // 嘗試找到匹配的已下載檔案
               for (final entry in _downloadedFiles.entries) {
-                final savedFileName = entry.key;
+                final currentSavedFileName = entry.key;
                 // 移除擴展名後比對（因為下載後可能會自動加上擴展名）
                 final baseFileName = fileName.split('.').first;
-                final baseSavedFileName = savedFileName.split('.').first;
+                final baseSavedFileName = currentSavedFileName.split('.').first;
                 if (baseSavedFileName.contains(baseFileName) || baseFileName.contains(baseSavedFileName)) {
                   downloadedPath = entry.value;
+                  savedFileName = currentSavedFileName;
                   isDownloaded = true;
                   break;
                 }
@@ -889,7 +888,7 @@ class _AnnouncementBottomSheetState extends State<_AnnouncementBottomSheet> {
                           )
                         : isDownloaded
                             ? GestureDetector(
-                                onTap: () => _showFileActions(fileName, downloadedPath!),
+                                onTap: () => _showFileActions(savedFileName!, downloadedPath!),
                                 child: const Icon(Icons.more_vert, size: 20, color: Colors.grey),
                               )
                             : const Icon(Icons.download, size: 20),
