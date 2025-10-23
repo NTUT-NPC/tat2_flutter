@@ -605,7 +605,8 @@ class _CourseTablePageState extends State<CourseTablePage> {
     // 保存用戶的選擇
     _saveSelectedSemester(year, semester);
     
-    _loadCourseTable();
+    // 強制刷新課表
+    _loadCourseTable(forceRefresh: true);
   }
   
   /// 保存用戶選擇的學期
