@@ -30,8 +30,8 @@ class ISchoolPlusConnector {
   final Dio _dio;
   
   // 用於防止並發請求導致課程選擇混亂的互斥鎖
-  final List<_LockRequest> _lockQueue = []; // 鎖請求隊列（包含正在執行和等待的）
-  bool _isProcessing = false; // 是否正在處理請求
+  final List<_LockRequest> _lockQueue = []; // 鎖請求隊列（等待執行的請求）
+  bool _isLocked = false; // 是否有請求正在執行（簡單的布爾標記）
 
   ISchoolPlusConnector({required Dio dio}) : _dio = dio {
     // 不覆蓋傳入的 Dio 配置，保持共享的設置
@@ -222,21 +222,21 @@ class ISchoolPlusConnector {
       courseId: courseId,
     );
 
+    final queueSize = _lockQueue.length;
+    
     // 將請求加入隊列
-    if (highPriority && (_isProcessing || _lockQueue.isNotEmpty)) {
+    if (highPriority && (_isLocked || _lockQueue.isNotEmpty)) {
       // 高優先級：插入到第一個低優先級請求之前
-      // 如果有請求正在執行（_isProcessing），從索引0開始（等待的第一個位置）
-      // 否則直接插入到索引0
-      int insertIndex = _isProcessing ? 0 : 0;
+      int insertIndex = 0;
       while (insertIndex < _lockQueue.length && _lockQueue[insertIndex].highPriority) {
         insertIndex++;
       }
       _lockQueue.insert(insertIndex, request);
-      print('[ISchoolPlus] 高優先級請求 $courseId 插隊到位置 $insertIndex (隊列長度: ${_lockQueue.length}, 正在處理: $_isProcessing)');
+      print('[ISchoolPlus] 高優先級請求 $courseId 插隊到位置 $insertIndex (隊列: ${_lockQueue.length}, 鎖定: $_isLocked, 原隊列: $queueSize)');
     } else {
       // 低優先級：加到隊列末尾
       _lockQueue.add(request);
-      print('[ISchoolPlus] 低優先級請求 $courseId 加入隊列 (當前隊列長度: ${_lockQueue.length}, 正在處理: $_isProcessing)');
+      print('[ISchoolPlus] 低優先級請求 $courseId 加入隊列 (隊列: ${_lockQueue.length}, 鎖定: $_isLocked, 原隊列: $queueSize)');
     }
 
     // 嘗試處理隊列
@@ -244,22 +244,24 @@ class ISchoolPlusConnector {
 
     // 等待輪到自己
     await completer.future;
-    print('[ISchoolPlus] 請求 $courseId 獲得鎖');
+    
+    // completer 完成時，_isLocked 已經在 _processQueue 中設置為 true 了
+    print('[ISchoolPlus] 請求 $courseId 獲得鎖並開始執行');
   }
 
   /// 處理鎖隊列
   void _processQueue() {
     // 如果正在處理或隊列為空，則不處理
-    if (_isProcessing || _lockQueue.isEmpty) {
+    if (_isLocked || _lockQueue.isEmpty) {
       return;
     }
 
-    // 標記為正在處理
-    _isProcessing = true;
-
     // 移除並獲取隊列中的第一個請求
     final first = _lockQueue.removeAt(0);
-    print('[ISchoolPlus] 開始處理請求 ${first.courseId} (隊列剩餘: ${_lockQueue.length})');
+    
+    // 先設置鎖定狀態（在 complete 之前！）
+    _isLocked = true;
+    print('[ISchoolPlus] 準備處理請求 ${first.courseId} (隊列剩餘: ${_lockQueue.length})');
     
     // 完成請求（讓它開始執行）
     first.completer.complete();
@@ -267,15 +269,15 @@ class ISchoolPlusConnector {
 
   /// 釋放鎖
   void _releaseLock() {
-    if (!_isProcessing) {
-      print('[ISchoolPlus] 警告：嘗試釋放鎖但沒有正在處理的請求');
+    if (!_isLocked) {
+      print('[ISchoolPlus] 警告：嘗試釋放鎖但當前未鎖定');
       return;
     }
 
     print('[ISchoolPlus] 釋放鎖 (隊列剩餘: ${_lockQueue.length})');
-
-    // 標記為不在處理中
-    _isProcessing = false;
+    
+    // 先解鎖（在處理下一個請求之前）
+    _isLocked = false;
 
     // 處理下一個請求
     if (_lockQueue.isNotEmpty) {
@@ -401,9 +403,24 @@ class ISchoolPlusConnector {
   }
 
   /// 取得公告詳細內容
+  /// [courseId] 課程 ID (6位數，必須提供)
+  /// [highPriority] 是否為高優先級請求（手動操作）
   Future<ISchoolPlusAnnouncementDetail?> getAnnouncementDetail(
-      ISchoolPlusAnnouncement announcement) async {
+      ISchoolPlusAnnouncement announcement, {required String courseId, bool highPriority = false}) async {
+    print('[ISchoolPlus] 請求公告詳情: $courseId (高優先級: $highPriority)');
+    
+    // 獲取鎖，高優先級請求會插隊
+    await _acquireLock(courseId, highPriority: highPriority);
+    
     try {
+      print('[ISchoolPlus] 開始處理公告詳情: $courseId');
+      
+      // 先選擇課程
+      if (!await _selectCourse(courseId)) {
+        print('[ISchoolPlus] 無法選擇課程: $courseId');
+        return null;
+      }
+      
       final data = {
         'token': announcement.token ?? '',
         'cid': announcement.cid ?? '',
@@ -456,6 +473,9 @@ class ISchoolPlusConnector {
       dev.log('[ISchoolPlus] Get announcement detail error: $e',
           stackTrace: stackTrace);
       return null;
+    } finally {
+      // 釋放鎖
+      _releaseLock();
     }
   }
 

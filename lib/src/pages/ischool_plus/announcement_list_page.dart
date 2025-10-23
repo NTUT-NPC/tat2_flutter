@@ -363,7 +363,7 @@ class _AnnouncementBottomSheetState extends State<_AnnouncementBottomSheet> {
     try {
       final service = ISchoolPlusService.instance;
       final detail = await service.connector
-          .getAnnouncementDetail(widget.announcement);
+          .getAnnouncementDetail(widget.announcement, courseId: widget.courseId);
 
       if (detail == null) {
         setState(() {
@@ -392,13 +392,12 @@ class _AnnouncementBottomSheetState extends State<_AnnouncementBottomSheet> {
     try {
       final service = ISchoolPlusService.instance;
       final detail = await service.connector
-          .getAnnouncementDetail(widget.announcement);
+          .getAnnouncementDetail(widget.announcement, courseId: widget.courseId);
 
       if (detail != null) {
         final cacheService = ISchoolPlusCacheService();
-        final courseId = widget.announcement.cid ?? '';
         final announcementId = widget.announcement.nid ?? '';
-        await cacheService.cacheAnnouncementDetail(courseId, announcementId, detail);
+        await cacheService.cacheAnnouncementDetail(widget.courseId, announcementId, detail);
       }
     } catch (e) {
       print('[AnnouncementDialog] Failed to update cache: $e');
@@ -420,22 +419,52 @@ class _AnnouncementBottomSheetState extends State<_AnnouncementBottomSheet> {
       final service = ISchoolPlusService.instance;
       
       debugPrint('[AnnouncementAttachment] Starting download: $fileName');
-      debugPrint('[AnnouncementAttachment] URL: $fileUrl');
+      debugPrint('[AnnouncementAttachment] Original URL: $fileUrl');
 
+      // 先更新公告內容以獲取最新的附件 URL（使用高優先級插隊）
+      debugPrint('[AnnouncementAttachment] Updating announcement detail with high priority...');
+      final updatedDetail = await service.connector
+          .getAnnouncementDetail(widget.announcement, courseId: widget.courseId, highPriority: true);
+      
+      if (updatedDetail == null) {
+        throw Exception('無法獲取最新的公告內容');
+      }
+      
+      // 從更新後的詳情中找到對應的附件 URL
+      String? updatedFileUrl;
+      for (final entry in updatedDetail.files.entries) {
+        if (entry.key == fileName) {
+          updatedFileUrl = entry.value;
+          break;
+        }
+      }
+      
+      if (updatedFileUrl == null) {
+        throw Exception('找不到附件：$fileName');
+      }
+      
+      debugPrint('[AnnouncementAttachment] Updated URL: $updatedFileUrl');
+      
+      // 更新緩存中的公告詳情
+      final cacheService = ISchoolPlusCacheService();
+      final announcementId = widget.announcement.nid ?? '';
+      await cacheService.cacheAnnouncementDetail(widget.courseId, announcementId, updatedDetail);
+      
+      // 更新當前顯示的詳情
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('開始下載：$fileName')),
-        );
+        setState(() {
+          _detail = updatedDetail;
+        });
       }
 
-      // 使用與教材相同的下載服務
+      // 使用與教材相同的下載服務，使用更新後的 URL
       final courseName = widget.announcement.subject; // 使用公告標題作為目錄名
       final filePath = await FileDownloadService.download(
         connector: service.connector,
-        url: fileUrl,
+        url: updatedFileUrl,
         dirName: courseName,
         name: fileName,
-        referer: fileUrl,
+        referer: updatedFileUrl,
         onProgress: (current, total) {
           if (total > 0) {
             setState(() {
