@@ -9,6 +9,19 @@ import '../models/ischool_plus/announcement.dart';
 import '../models/ischool_plus/announcement_detail.dart';
 import '../models/ischool_plus/course_file.dart';
 
+/// 鎖請求項目
+class _LockRequest {
+  final Completer<void> completer;
+  final bool highPriority;
+  final String courseId; // 用於調試
+
+  _LockRequest({
+    required this.completer,
+    required this.highPriority,
+    required this.courseId,
+  });
+}
+
 /// i學院連接器 - 參考 TAT 實作
 class ISchoolPlusConnector {
   static const String _baseUrl = 'https://istudy.ntut.edu.tw/';
@@ -17,8 +30,8 @@ class ISchoolPlusConnector {
   final Dio _dio;
   
   // 用於防止並發請求導致課程選擇混亂的互斥鎖
-  Completer<void>? _currentLock; // 當前正在執行的鎖
-  final List<Completer<void>> _waitingQueue = []; // 等待隊列
+  final List<_LockRequest> _lockQueue = []; // 鎖請求隊列（包含正在執行和等待的）
+  bool _isProcessing = false; // 是否正在處理請求
 
   ISchoolPlusConnector({required Dio dio}) : _dio = dio {
     // 不覆蓋傳入的 Dio 配置，保持共享的設置
@@ -201,37 +214,72 @@ class ISchoolPlusConnector {
   }
 
   /// 獲取鎖（支持優先級）
-  Future<void> _acquireLock({bool highPriority = false}) async {
-    // 如果有當前正在執行的鎖，先等它完成
-    if (_currentLock != null) {
-      final completer = Completer<void>();
-      
-      if (highPriority) {
-        // 高優先級（手動操作）插入到等待隊列前面
-        _waitingQueue.insert(0, completer);
-      } else {
-        // 低優先級（背景同步）加到等待隊列末尾
-        _waitingQueue.add(completer);
+  Future<void> _acquireLock(String courseId, {bool highPriority = false}) async {
+    final completer = Completer<void>();
+    final request = _LockRequest(
+      completer: completer,
+      highPriority: highPriority,
+      courseId: courseId,
+    );
+
+    // 將請求加入隊列
+    if (highPriority && (_isProcessing || _lockQueue.isNotEmpty)) {
+      // 高優先級：插入到第一個低優先級請求之前
+      // 如果有請求正在執行（_isProcessing），從索引0開始（等待的第一個位置）
+      // 否則直接插入到索引0
+      int insertIndex = _isProcessing ? 0 : 0;
+      while (insertIndex < _lockQueue.length && _lockQueue[insertIndex].highPriority) {
+        insertIndex++;
       }
-      
-      // 等待輪到自己
-      await completer.future;
+      _lockQueue.insert(insertIndex, request);
+      print('[ISchoolPlus] 高優先級請求 $courseId 插隊到位置 $insertIndex (隊列長度: ${_lockQueue.length}, 正在處理: $_isProcessing)');
+    } else {
+      // 低優先級：加到隊列末尾
+      _lockQueue.add(request);
+      print('[ISchoolPlus] 低優先級請求 $courseId 加入隊列 (當前隊列長度: ${_lockQueue.length}, 正在處理: $_isProcessing)');
     }
-    
-    // 創建自己的鎖
-    _currentLock = Completer<void>();
+
+    // 嘗試處理隊列
+    _processQueue();
+
+    // 等待輪到自己
+    await completer.future;
+    print('[ISchoolPlus] 請求 $courseId 獲得鎖');
   }
-  
+
+  /// 處理鎖隊列
+  void _processQueue() {
+    // 如果正在處理或隊列為空，則不處理
+    if (_isProcessing || _lockQueue.isEmpty) {
+      return;
+    }
+
+    // 標記為正在處理
+    _isProcessing = true;
+
+    // 移除並獲取隊列中的第一個請求
+    final first = _lockQueue.removeAt(0);
+    print('[ISchoolPlus] 開始處理請求 ${first.courseId} (隊列剩餘: ${_lockQueue.length})');
+    
+    // 完成請求（讓它開始執行）
+    first.completer.complete();
+  }
+
   /// 釋放鎖
   void _releaseLock() {
-    // 完成當前鎖
-    _currentLock?.complete();
-    _currentLock = null;
-    
-    // 處理等待隊列中的下一個請求
-    if (_waitingQueue.isNotEmpty) {
-      final next = _waitingQueue.removeAt(0);
-      next.complete();
+    if (!_isProcessing) {
+      print('[ISchoolPlus] 警告：嘗試釋放鎖但沒有正在處理的請求');
+      return;
+    }
+
+    print('[ISchoolPlus] 釋放鎖 (隊列剩餘: ${_lockQueue.length})');
+
+    // 標記為不在處理中
+    _isProcessing = false;
+
+    // 處理下一個請求
+    if (_lockQueue.isNotEmpty) {
+      _processQueue();
     }
   }
 
@@ -239,10 +287,14 @@ class ISchoolPlusConnector {
   /// [highPriority] 是否為高優先級請求（手動操作）
   Future<List<ISchoolPlusAnnouncement>> getCourseAnnouncements(
       String courseId, {bool highPriority = false}) async {
+    print('[ISchoolPlus] 請求公告列表: $courseId (高優先級: $highPriority)');
+    
     // 獲取鎖，高優先級請求會插隊
-    await _acquireLock(highPriority: highPriority);
+    await _acquireLock(courseId, highPriority: highPriority);
     
     try {
+      print('[ISchoolPlus] 開始處理公告列表: $courseId');
+      
       // 先選擇課程
       if (!await _selectCourse(courseId)) {
         throw Exception('無法選擇課程');
@@ -410,10 +462,14 @@ class ISchoolPlusConnector {
   /// 取得課程檔案列表
   /// [highPriority] 是否為高優先級請求（手動操作）
   Future<List<ISchoolPlusCourseFile>> getCourseFiles(String courseId, {bool highPriority = false}) async {
+    print('[ISchoolPlus] 請求檔案列表: $courseId (高優先級: $highPriority)');
+    
     // 獲取鎖，高優先級請求會插隊
-    await _acquireLock(highPriority: highPriority);
+    await _acquireLock(courseId, highPriority: highPriority);
     
     try {
+      print('[ISchoolPlus] 開始處理檔案列表: $courseId');
+      
       // 先選擇課程
       if (!await _selectCourse(courseId)) {
         return [];
