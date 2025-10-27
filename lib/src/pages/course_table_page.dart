@@ -705,11 +705,7 @@ class _CourseTablePageState extends State<CourseTablePage> {
             if (course['instructor']?.isNotEmpty == true)
               Text('教師：${course['instructor']}'),
             if (course['classroom']?.isNotEmpty == true)
-              Text(
-                '教室：${course['classroom']}',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
+              Text('教室：${(course['classroom'] as String).replaceAll('\n', '、')}'),
             if (timeInfo.isNotEmpty)
               Text('時間：$timeInfo'),
             if (course['required']?.isNotEmpty == true)
