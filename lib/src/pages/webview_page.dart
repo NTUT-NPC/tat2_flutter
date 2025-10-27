@@ -128,6 +128,13 @@ class _WebViewPageState extends State<WebViewPage> {
       child: Scaffold(
         appBar: AppBar(
           title: Text(widget.title),
+          // 自訂返回按鈕，讓它直接退出頁面而不是在 WebView 內返回
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+          ),
         ),
         body: SafeArea(
         child: Column(
