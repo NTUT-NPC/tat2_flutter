@@ -275,13 +275,16 @@ class ISchoolPlusConnector {
     }
 
     print('[ISchoolPlus] 釋放鎖 (隊列剩餘: ${_lockQueue.length})');
-    
-    // 先解鎖（在處理下一個請求之前）
-    _isLocked = false;
 
-    // 處理下一個請求
+    // 如果有等待的請求，不要解鎖，而是直接處理下一個
     if (_lockQueue.isNotEmpty) {
+      // 臨時解鎖以便 _processQueue 可以執行
+      _isLocked = false;
       _processQueue();
+      // _processQueue 會重新設置 _isLocked = true
+    } else {
+      // 沒有等待的請求，解鎖
+      _isLocked = false;
     }
   }
 
