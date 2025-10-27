@@ -1,7 +1,9 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
+import '../../utils/blowfish.dart';
 
 /// NTUT 認證服務
 /// 處理登入、登出、Session 管理
@@ -10,7 +12,7 @@ class NtutAuthService {
   late final CookieJar _cookieJar;
 
   static const String baseUrl = 'https://app.ntut.edu.tw';
-  static const String userAgent = 'Direk ios App';
+  static const String userAgent = 'direk android app';
 
   String? _jsessionId;
   String? _userIdentifier;
@@ -30,6 +32,10 @@ class NtutAuthService {
       headers: {
         'User-Agent': userAgent,
         'Accept': 'application/json, text/plain, */*',
+        'App-Locale': 'zh-TW',
+        'App-Version': '1.2.0',
+        'Os-Version': '13',
+        'Phone-Brand': 'Google Pixel',
       },
       contentType: Headers.formUrlEncodedContentType,
       followRedirects: true,
@@ -109,6 +115,37 @@ class NtutAuthService {
     return null;
   }
 
+  /// 使用 Blowfish ECB 模式加密密碼（根據 APK 逆向工程）
+  /// 
+  /// [password] 明文密碼
+  /// [username] 使用者帳號（作為加密金鑰）
+  /// 
+  /// Returns: 加密後的密碼字串 (格式: {ENCODE}Base64字串)
+  String _encryptPassword(String password, String username) {
+    try {
+      // 使用帳號的小寫作為金鑰
+      final keyBytes = Uint8List.fromList(utf8.encode(username.toLowerCase()));
+      
+      // 建立 Blowfish 加密器
+      final cipher = BlowfishECB(keyBytes);
+      
+      // PKCS5/PKCS7 Padding
+      final paddedPassword = pkcs5Pad(utf8.encode(password), 8);
+      
+      // 加密
+      final encrypted = cipher.encrypt(paddedPassword);
+      
+      // Base64 編碼
+      final b64Encoded = base64.encode(encrypted);
+      
+      // 添加前綴
+      return '{ENCODE}$b64Encoded';
+    } catch (e) {
+      print('[NTUT Auth] 密碼加密失敗: $e');
+      rethrow;
+    }
+  }
+
   /// 登入
   /// 
   /// [username] 使用者名稱（學號）
@@ -119,9 +156,17 @@ class NtutAuthService {
     try {
       print('[NTUT Auth] 登入請求: $username');
 
+      // 加密密碼
+      final encryptedPassword = _encryptPassword(password, username);
+
+      // 準備請求資料（根據 APK 逆向工程）
       final requestBody = {
         'muid': username,
-        'mpassword': password,
+        'mpassword': encryptedPassword,
+        'forceMobile': 'app',
+        'deviceId': '0000000000000000',  // 固定的 Device ID
+        'deviceType': 'android',
+        'deviceToken': '',  // FCM Token (選填)
       };
 
       final loginResponse = await _dio.post(

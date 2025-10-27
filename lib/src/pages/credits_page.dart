@@ -217,9 +217,11 @@ class _CreditsPageState extends State<CreditsPage> {
             _buildCourseTypesCard(),
             const SizedBox(height: 16),
 
-            // 博雅學分卡片（對應 TAT 的 _generalLessonItemTile）
-            _buildGeneralLessonCard(),
-            const SizedBox(height: 16),
+            // 博雅學分卡片（只有對應學院的學生才顯示）
+            if (_shouldShowGeneralLessonCard()) ...[
+              _buildGeneralLessonCard(),
+              const SizedBox(height: 16),
+            ],
 
             // 外系學分卡片（對應 TAT 的 _otherDepartmentItemTile）
             _buildOtherDepartmentCard(),
@@ -341,6 +343,18 @@ class _CreditsPageState extends State<CreditsPage> {
         ),
       ],
     );
+  }
+
+  /// 判斷是否應該顯示博雅學分卡片
+  /// 只有對應學院的學生（四技、二技等）才顯示，五專等不顯示
+  bool _shouldShowGeneralLessonCard() {
+    if (_stats == null) return false;
+    
+    // 檢查是否有學院博雅需求
+    final requirement = _stats!.collegeBoyaRequirement;
+    
+    // 如果沒有對應的學院需求（null 或 unknown 學院），不顯示
+    return requirement != null;
   }
 
   /// 各類課程學分卡片（對應 TAT 的 constCourseType 顯示）
