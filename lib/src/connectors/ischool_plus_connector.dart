@@ -9,20 +9,6 @@ import '../models/ischool_plus/announcement.dart';
 import '../models/ischool_plus/announcement_detail.dart';
 import '../models/ischool_plus/course_file.dart';
 
-/// 鎖請求項目
-class _LockRequest {
-  final Completer<void> completer;
-  final bool highPriority;
-  final String courseId;
-  final DateTime requestTime;
-
-  _LockRequest({
-    required this.completer,
-    required this.highPriority,
-    required this.courseId,
-  }) : requestTime = DateTime.now();
-}
-
 /// i學院連接器 - 參考 TAT 實作
 class ISchoolPlusConnector {
   static const String _baseUrl = 'https://istudy.ntut.edu.tw/';
@@ -30,10 +16,10 @@ class ISchoolPlusConnector {
   
   final Dio _dio;
   
-  // 用於防止並發請求導致課程選擇混亂的互斥鎖
-  final List<_LockRequest> _lockQueue = []; // 鎖請求隊列
-  bool _isExecuting = false; // 是否有任務正在執行
+  // 使用單一 Completer 作為互斥鎖
+  Completer<void>? _lock;
   String? _currentCourseId; // 當前正在處理的課程 ID
+  String? _lastSelectedCourseId; // 上次成功選擇的課程 ID
   
   // 用於調試
   int _completedRequests = 0;
@@ -158,12 +144,21 @@ class ISchoolPlusConnector {
   /// 
   /// 參考 TAT 實作：需要先取得課程列表，找到對應的 courseValue，然後 POST XML 到 goto_course.php
   Future<bool> _selectCourse(String courseId) async {
+    // 如果已經選擇了這門課程，跳過
+    if (_lastSelectedCourseId == courseId) {
+      debugPrint('[ISchoolPlus] [SELECT] 課程 $courseId 已選擇，跳過');
+      return true;
+    }
+    
     try {
+      debugPrint('[ISchoolPlus] [SELECT] 開始選擇課程: $courseId (上次: $_lastSelectedCourseId)');
+      
       // Step 1: 取得課程列表頁面
       final response = await _dio.get('${_baseUrl}learn/mooc_sysbar.php');
       
       if (response.statusCode != 200) {
         debugPrint('[ISchoolPlus] 無法取得課程列表 (status: ${response.statusCode})');
+        _lastSelectedCourseId = null; // 清空緩存
         return false;
       }
       
@@ -173,6 +168,7 @@ class ISchoolPlusConnector {
       
       if (selectElement == null) {
         debugPrint('[ISchoolPlus] 找不到課程選單元素');
+        _lastSelectedCourseId = null; // 清空緩存
         return false;
       }
       
@@ -192,8 +188,11 @@ class ISchoolPlusConnector {
       
       if (courseValue == null) {
         debugPrint('[ISchoolPlus] 在課程列表中找不到課程: $courseId');
+        _lastSelectedCourseId = null; // 清空緩存
         return false;
       }
+      
+      debugPrint('[ISchoolPlus] [SELECT] 找到課程 value: $courseValue');
       
       // Step 3: POST XML 到 goto_course.php 來選擇課程
       final xml = '<manifest><ticket/><course_id>$courseValue</course_id><env/></manifest>';
@@ -208,80 +207,60 @@ class ISchoolPlusConnector {
       
       if (gotoResponse.statusCode != 200) {
         debugPrint('[ISchoolPlus] 選擇課程失敗 (status: ${gotoResponse.statusCode})');
+        _lastSelectedCourseId = null; // 清空緩存
         return false;
       }
       
+      debugPrint('[ISchoolPlus] [SELECT] POST goto_course.php 成功');
+      
       // 重要：選擇課程後，需要訪問課程首頁來初始化 session
       try {
-        await _dio.get('${_baseUrl}learn/index.php');
+        final indexResponse = await _dio.get('${_baseUrl}learn/index.php');
+        debugPrint('[ISchoolPlus] [SELECT] 訪問課程首頁成功 (status: ${indexResponse.statusCode})');
       } catch (e) {
         debugPrint('[ISchoolPlus] 訪問課程首頁失敗: $e');
+        _lastSelectedCourseId = null; // 清空緩存
+        return false;
       }
       
+      // 添加小延遲確保服務器端狀態更新
+      await Future.delayed(const Duration(milliseconds: 200));
+      
+      // 記錄已成功選擇的課程
+      _lastSelectedCourseId = courseId;
+      
+      debugPrint('[ISchoolPlus] [SELECT] 課程選擇完成: $courseId');
       return true;
     } catch (e) {
       debugPrint('[ISchoolPlus] 選擇課程異常: $e');
+      _lastSelectedCourseId = null; // 清空緩存
       return false;
     }
   }
 
-  /// 獲取鎖（支持優先級）
-  /// 確保在選擇課程之前獲取鎖，選擇課程和獲取資料是原子性操作
-  Future<void> _acquireLock(String courseId, {bool highPriority = false}) async {
-    final completer = Completer<void>();
-    final request = _LockRequest(
-      completer: completer,
-      highPriority: highPriority,
-      courseId: courseId,
-    );
-
-    // 將請求加入隊列
-    if (highPriority) {
-      // 高優先級：插入到第一個低優先級請求之前
-      int insertIndex = 0;
-      while (insertIndex < _lockQueue.length && _lockQueue[insertIndex].highPriority) {
-        insertIndex++;
+  /// 獲取鎖
+  /// 使用簡單的互斥鎖，確保同一時間只有一個請求在執行
+  Future<void> _acquireLock(String courseId) async {
+    // 如果有鎖存在，等待它完成
+    while (_lock != null) {
+      debugPrint('[ISchoolPlus] [WAIT] 請求 $courseId 等待鎖釋放 (當前課程: $_currentCourseId)');
+      try {
+        await _lock!.future;
+      } catch (e) {
+        // 忽略錯誤，繼續嘗試
       }
-      _lockQueue.insert(insertIndex, request);
-      debugPrint('[ISchoolPlus] [HIGH] 高優先級請求 $courseId 插隊到位置 $insertIndex (隊列: ${_lockQueue.length}, 正在執行: $_isExecuting, 當前課程: $_currentCourseId)');
-    } else {
-      // 低優先級：加到隊列末尾
-      _lockQueue.add(request);
-      debugPrint('[ISchoolPlus] [LOW] 低優先級請求 $courseId 加入隊列 (隊列: ${_lockQueue.length}, 正在執行: $_isExecuting, 當前課程: $_currentCourseId)');
     }
 
-    // 嘗試處理隊列
-    _processQueue();
-
-    // 等待輪到自己
-    await completer.future;
-    
-    debugPrint('[ISchoolPlus] [LOCK] 請求 $courseId 獲得鎖並開始執行');
-  }
-
-  /// 處理鎖隊列
-  void _processQueue() {
-    // 如果正在處理或隊列為空，則不處理
-    if (_isExecuting || _lockQueue.isEmpty) {
-      return;
-    }
-
-    // 移除並獲取隊列中的第一個請求
-    final first = _lockQueue.removeAt(0);
-    
-    // 標記為正在執行
-    _isExecuting = true;
-    _currentCourseId = first.courseId;
-    debugPrint('[ISchoolPlus] [START] 開始處理請求 ${first.courseId} (優先級: ${first.highPriority ? "高" : "低"}, 隊列剩餘: ${_lockQueue.length})');
-    
-    // 完成請求（讓它開始執行）
-    first.completer.complete();
+    // 創建新鎖
+    _lock = Completer<void>();
+    _currentCourseId = courseId;
+    debugPrint('[ISchoolPlus] [LOCK] 請求 $courseId 獲得鎖');
   }
 
   /// 釋放鎖
   void _releaseLock(String courseId) {
-    if (!_isExecuting) {
-      debugPrint('[ISchoolPlus] [WARN] 警告：嘗試釋放鎖但沒有正在執行的請求 (courseId: $courseId)');
+    if (_lock == null) {
+      debugPrint('[ISchoolPlus] [WARN] 警告：嘗試釋放不存在的鎖 (courseId: $courseId)');
       return;
     }
 
@@ -290,30 +269,29 @@ class ISchoolPlusConnector {
     }
 
     _completedRequests++;
-    debugPrint('[ISchoolPlus] [RELEASE] 請求 $courseId 釋放鎖 (已完成: $_completedRequests, 隊列剩餘: ${_lockQueue.length})');
+    debugPrint('[ISchoolPlus] [RELEASE] 請求 $courseId 釋放鎖 (已完成: $_completedRequests)');
     
-    _isExecuting = false;
+    _lock!.complete();
+    _lock = null;
     _currentCourseId = null;
-
-    // 處理下一個請求
-    _processQueue();
   }
 
   /// 取得課程公告列表
-  /// [highPriority] 是否為高優先級請求（手動操作）
   Future<List<ISchoolPlusAnnouncement>> getCourseAnnouncements(
       String courseId, {bool highPriority = false}) async {
-    debugPrint('[ISchoolPlus] 請求公告列表: $courseId (高優先級: $highPriority)');
+    debugPrint('[ISchoolPlus] 請求公告列表: $courseId');
     
-    // 獲取鎖，高優先級請求會插隊
-    await _acquireLock(courseId, highPriority: highPriority);
+    // 獲取鎖
+    await _acquireLock(courseId);
     
     try {
       debugPrint('[ISchoolPlus] 開始處理公告列表: $courseId');
       
       // 先選擇課程
-      if (!await _selectCourse(courseId)) {
-        throw Exception('無法選擇課程');
+      final selectResult = await _selectCourse(courseId);
+      if (!selectResult) {
+        debugPrint('[ISchoolPlus] 選擇課程失敗，返回空列表');
+        return [];
       }
 
       // Step 1: 取得 bid 和表單資料
@@ -410,30 +388,30 @@ class ISchoolPlusConnector {
       return announcements;
     } catch (e) {
       debugPrint('[ISchoolPlus] 取得公告列表失敗: $e');
-      // 重新拋出異常讓上層處理
-      rethrow;
+      // 返回空列表而不是拋出異常，避免上層需要處理異常
+      return [];
     } finally {
-      // 釋放鎖
+      // 確保一定會釋放鎖
       _releaseLock(courseId);
     }
   }
 
   /// 取得公告詳細內容
   /// [courseId] 課程 ID (6位數，必須提供)
-  /// [highPriority] 是否為高優先級請求（手動操作）
   Future<ISchoolPlusAnnouncementDetail?> getAnnouncementDetail(
       ISchoolPlusAnnouncement announcement, {required String courseId, bool highPriority = false}) async {
-    debugPrint('[ISchoolPlus] 請求公告詳情: $courseId (高優先級: $highPriority)');
+    debugPrint('[ISchoolPlus] 請求公告詳情: $courseId');
     
-    // 獲取鎖，高優先級請求會插隊
-    await _acquireLock(courseId, highPriority: highPriority);
+    // 獲取鎖
+    await _acquireLock(courseId);
     
     try {
       debugPrint('[ISchoolPlus] 開始處理公告詳情: $courseId');
       
       // 先選擇課程
-      if (!await _selectCourse(courseId)) {
-        debugPrint('[ISchoolPlus] 無法選擇課程: $courseId');
+      final selectResult = await _selectCourse(courseId);
+      if (!selectResult) {
+        debugPrint('[ISchoolPlus] 選擇課程失敗: $courseId');
         return null;
       }
       
@@ -491,24 +469,24 @@ class ISchoolPlusConnector {
       debugPrint('[ISchoolPlus] StackTrace: $stackTrace');
       return null;
     } finally {
-      // 釋放鎖
+      // 確保一定會釋放鎖
       _releaseLock(courseId);
     }
   }
 
   /// 取得課程檔案列表
-  /// [highPriority] 是否為高優先級請求（手動操作）
   Future<List<ISchoolPlusCourseFile>> getCourseFiles(String courseId, {bool highPriority = false}) async {
-    debugPrint('[ISchoolPlus] 請求檔案列表: $courseId (高優先級: $highPriority)');
+    debugPrint('[ISchoolPlus] 請求檔案列表: $courseId');
     
-    // 獲取鎖，高優先級請求會插隊
-    await _acquireLock(courseId, highPriority: highPriority);
+    // 獲取鎖
+    await _acquireLock(courseId);
     
     try {
       debugPrint('[ISchoolPlus] 開始處理檔案列表: $courseId');
       
       // 先選擇課程
-      if (!await _selectCourse(courseId)) {
+      final selectResult = await _selectCourse(courseId);
+      if (!selectResult) {
         debugPrint('[ISchoolPlus] 選擇課程失敗');
         return [];
       }
@@ -629,7 +607,7 @@ class ISchoolPlusConnector {
       debugPrint('[ISchoolPlus] StackTrace: $stackTrace');
       return [];
     } finally {
-      // 釋放鎖
+      // 確保一定會釋放鎖
       _releaseLock(courseId);
     }
   }

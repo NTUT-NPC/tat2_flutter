@@ -33,7 +33,7 @@ class BadgeService extends ChangeNotifier {
   static const String _lastCheckTimeKey = 'badge_last_check_time_ischool';
   static const String _courseLastSyncPrefix = 'badge_course_sync_'; // 每個課程的上次同步時間
   static const String _personalizationVisitedKey = 'personalization_first_visit'; // 個人化頁面是否已訪問
-  static const int _checkIntervalMinutes = 15; // 15分鐘檢查一次
+  static const int _checkIntervalMinutes = 1; // 15分鐘檢查一次
 
   SharedPreferences? _prefs;
 
