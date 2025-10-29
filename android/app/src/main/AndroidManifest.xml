@@ -4,7 +4,7 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     
     <application
-        android:label="QAQ"
+        android:label="TAT2"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="true"
@@ -39,7 +39,7 @@
         
         <!-- 課程桌面小工具 -->
         <receiver
-            android:name="org.ntut.qaq.widget.CourseWidgetProvider"
+            android:name="club.ntut.npc.tat2.widget.CourseWidgetProvider"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />

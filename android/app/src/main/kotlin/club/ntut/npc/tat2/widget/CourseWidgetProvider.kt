@@ -1,4 +1,4 @@
-package org.ntut.qaq.widget
+package club.ntut.npc.tat2.widget
 
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
@@ -8,8 +8,8 @@ import android.content.Intent
 import android.graphics.BitmapFactory
 import android.util.Log
 import android.widget.RemoteViews
-import org.ntut.qaq.MainActivity
-import org.ntut.qaq.R
+import club.ntut.npc.tat2.MainActivity
+import club.ntut.npc.tat2.R
 import java.io.File
 
 class CourseWidgetProvider : AppWidgetProvider() {

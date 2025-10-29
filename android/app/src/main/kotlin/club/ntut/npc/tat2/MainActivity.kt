@@ -1,4 +1,4 @@
-package org.ntut.qaq
+package club.ntut.npc.tat2
 
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
@@ -7,7 +7,7 @@ import android.content.Intent
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
-import org.ntut.qaq.widget.CourseWidgetProvider
+import club.ntut.npc.tat2.widget.CourseWidgetProvider
 
 class MainActivity: FlutterActivity() {
     private val WIDGET_CHANNEL = "org.ntut.qaq/widget"
