@@ -7,6 +7,7 @@ import '../providers/auth_provider_v2.dart';
 import '../services/course_color_service.dart';
 import '../services/widget_service.dart' hide debugPrint; // 導入 Widget 服務,但隱藏 debugPrint 避免衝突
 import '../widgets/weekly_course_table.dart';
+import '../widgets/login_required_view.dart';
 import 'course_syllabus_page.dart';
 
 class CourseTablePage extends StatefulWidget {
@@ -274,11 +275,26 @@ class _CourseTablePageState extends State<CourseTablePage> {
               }
             } else if (!hasCache) {
               // 沒有獲取到數據且沒有緩存
-              debugPrint('[CourseTable] 無可用學期');
+              debugPrint('[CourseTable] API 返回空學期列表');
               setState(() {
                 _isLoading = false;
+                _hasInitialLoaded = true;
                 _error = '無法獲取可用學期列表';
+                _availableSemesters = [];
+                _courses = [];
               });
+              
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: const Text('無法獲取學期列表，請稍後重試'),
+                    action: SnackBarAction(
+                      label: '重試',
+                      onPressed: () => _loadAvailableSemesters(retryCount: 1),
+                    ),
+                  ),
+                );
+              }
               return;
             }
             // 如果有緩存但新請求沒有數據，繼續使用緩存
@@ -312,10 +328,13 @@ class _CourseTablePageState extends State<CourseTablePage> {
       }
       
       if (availableSemesters.isEmpty) {
-        debugPrint('[CourseTable] 無可用學期');
+        debugPrint('[CourseTable] 最終學期列表為空');
         setState(() {
           _isLoading = false;
+          _hasInitialLoaded = true;
           _error = '無法獲取可用學期列表';
+          _availableSemesters = [];
+          _courses = [];
         });
         return;
       }
@@ -943,56 +962,20 @@ class _CourseTablePageState extends State<CourseTablePage> {
       );
     }
     
-    if (_error.isNotEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error_outline, size: 64, color: Colors.red),
-            const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32),
-              child: Text(
-                '錯誤：$_error',
-                textAlign: TextAlign.center,
-              ),
-            ),
-            const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ElevatedButton.icon(
-                  onPressed: () => _loadCourseTable(forceRefresh: true),
-                  icon: const Icon(Icons.table_chart),
-                  label: const Text('重試課表'),
-                ),
-                const SizedBox(width: 16),
-                ElevatedButton.icon(
-                  onPressed: () => _loadAvailableSemesters(retryCount: 1),
-                  icon: const Icon(Icons.calendar_month),
-                  label: const Text('重試學期'),
-                ),
-              ],
-            ),
-          ],
-        ),
-      );
-    }
-    
-    // 只在已完成初始載入且確實沒有資料時才顯示「沒有課程資料」
-    // 避免在載入緩存前閃現這個訊息
+    // 訪客模式：有緩存顯示緩存，沒有緩存提示登入
     if (_courses.isEmpty) {
       if (_hasInitialLoaded) {
-        // 已完成載入但沒有資料
-        return const Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.inbox, size: 64, color: Colors.grey),
-              SizedBox(height: 16),
-              Text('沒有課程資料'),
-            ],
-          ),
+        // 已完成載入但沒有資料，提示登入
+        return LoginRequiredView(
+          featureName: '課表',
+          description: '查看課表需要登入\n登入後系統會自動緩存課表數據',
+          onLoginTap: () async {
+            final result = await Navigator.of(context).pushNamed('/login');
+            // 登入成功後重新載入
+            if (result == true && mounted) {
+              _loadAvailableSemesters(retryCount: 1);
+            }
+          },
         );
       } else {
         // 還在載入中（顯示佔位符避免閃現）
@@ -1002,6 +985,7 @@ class _CourseTablePageState extends State<CourseTablePage> {
     
     final colorService = context.watch<CourseColorService>();
     
+    // 直接顯示課表，不顯示訪客模式橫幅
     return WeeklyCourseTable(
       courses: _courses,
       onCourseTap: _showCourseDetail,

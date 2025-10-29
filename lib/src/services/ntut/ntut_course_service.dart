@@ -159,10 +159,15 @@ class NtutCourseService {
 
     try {
       print('[NTUT Course] 獲取可用學年度列表');
+      print('[NTUT Course] 使用學號: ${_authService.userIdentifier}');
+      print('[NTUT Course] 使用 JSESSIONID: $_courseJSessionId');
 
       final courseDio = Dio(BaseOptions(
         baseUrl: courseBaseUrl,
-        headers: {'User-Agent': userAgent},
+        headers: {
+          'User-Agent': userAgent,
+          'Cookie': 'JSESSIONID=$_courseJSessionId',
+        },
         validateStatus: (status) => status! < 500,
       ));
       
@@ -180,6 +185,8 @@ class NtutCourseService {
           'format': '-3',
         },
       );
+      
+      print('[NTUT Course] 回應狀態碼: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final htmlContent = response.data.toString();
@@ -194,12 +201,18 @@ class NtutCourseService {
           
           final tables = document.getElementsByTagName('table');
           
+          print('[NTUT Course] 找到 ${tables.length} 個 table 元素');
+          
           if (tables.isEmpty) {
+            print('[NTUT Course] HTML 內容沒有 table，可能是頁面格式錯誤');
+            print('[NTUT Course] HTML 前 500 字元: ${htmlContent.substring(0, htmlContent.length > 500 ? 500 : htmlContent.length)}');
             return [];
           }
           
           final table = tables[0];
           final rows = table.getElementsByTagName('tr');
+          
+          print('[NTUT Course] 表格有 ${rows.length} 行');
           
           for (int i = 1; i < rows.length; i++) {
             final row = rows[i];

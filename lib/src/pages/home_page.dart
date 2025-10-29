@@ -75,13 +75,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       final credentials = await authService.getSavedCredentials();
       
       if (credentials == null) {
-        // 沒有保存的憑證，跳轉到登入頁面
-        debugPrint('[HomePage] 沒有保存的憑證，跳轉到登入頁面');
-        if (mounted) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            Navigator.of(context).pushReplacementNamed('/login');
-          });
-        }
+        // 沒有保存的憑證，進入訪客模式（不跳轉到登入頁面）
+        debugPrint('[HomePage] 沒有保存的憑證，進入訪客模式');
+        // 訪客模式下，用戶可以查看緩存的課表、成績等離線功能
+        // 需要登入的功能（如校務系統、i學園）會顯示登入提示
         return;
       }
       
@@ -102,7 +99,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       final success = await authProvider.tryAutoLogin().timeout(
         const Duration(seconds: 10),
         onTimeout: () {
-          debugPrint('[HomePage] 後台自動登入超時');
+          debugPrint('[HomePage] 後台自動登入超時，進入離線模式');
           return false;
         },
       );
@@ -116,7 +113,11 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           }
         });
       } else {
-        debugPrint('[HomePage] 後台自動登入失敗');
+        debugPrint('[HomePage] 後台自動登入失敗，保持離線模式');
+        
+        // 自動登入失敗，但不強制跳轉到登入頁面
+        // 用戶可以繼續使用緩存數據（離線模式）
+        // 如果需要在線功能，各個頁面會顯示登入提示
         
         // 檢查是否為網路錯誤
         if (authProvider.error?.contains('connection') == true ||
@@ -124,16 +125,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             authProvider.error?.contains('network') == true) {
           debugPrint('[HomePage] 網路連接失敗，保留在主頁面（離線模式）');
           _shouldRetryInitOnResume = true;
-          // 不跳轉到登入頁面，允許使用離線功能
-          return;
         }
         
-        // 其他錯誤（如帳密錯誤），跳轉到登入頁面
-        if (mounted) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            Navigator.of(context).pushReplacementNamed('/login');
-          });
-        }
+        // 不再強制跳轉到登入頁面，讓用戶自主選擇
       }
     } catch (e) {
       debugPrint('[HomePage] 初始化異常: $e');
@@ -150,12 +144,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         return;
       }
       
-      // 其他異常，跳轉到登入頁面
-      if (mounted) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          Navigator.of(context).pushReplacementNamed('/login');
-        });
-      }
+      // 其他異常，保持在主頁面（訪客/離線模式）
+      debugPrint('[HomePage] 發生異常，保持訪客模式');
+      // 不強制跳轉到登入頁面，讓用戶自主選擇
     }
   }
 

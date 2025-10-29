@@ -10,6 +10,7 @@ import '../providers/auth_provider_v2.dart';
 import '../widgets/grade_item_widget.dart';
 import '../widgets/grade_summary_widget.dart';
 import '../widgets/semester_stats_widget.dart';
+import '../widgets/login_required_view.dart';
 
 /// 成績查詢頁面
 class GradesPage extends StatefulWidget {
@@ -57,7 +58,7 @@ class _GradesPageState extends State<GradesPage> with TickerProviderStateMixin {
             _errorMessage = '需要登入';
             _isLoading = false;
           });
-          _showLoginPrompt();
+          // 不彈出對話框，直接顯示 LoginRequiredView
           return;
         }
       }
@@ -73,10 +74,10 @@ class _GradesPageState extends State<GradesPage> with TickerProviderStateMixin {
       
       if (credentials == null) {
         setState(() {
-          _errorMessage = '請先登入';
+          _errorMessage = '需要登入';
           _isLoading = false;
         });
-        _showLoginPrompt();
+        // 不彈出對話框，直接顯示 LoginRequiredView
         return;
       }
       
@@ -133,36 +134,6 @@ class _GradesPageState extends State<GradesPage> with TickerProviderStateMixin {
     }
   }
 
-  /// 顯示登入提示對話框
-  void _showLoginPrompt() {
-    if (!mounted) return;
-    
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('需要登入'),
-        content: const Text('查看成績需要登入。'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              Navigator.of(context).pop();
-              // 導航到登入頁面
-              final result = await Navigator.of(context).pushNamed('/login');
-              // 登入成功後重新載入
-              if (result == true && mounted) {
-                _loadGrades(forceRefresh: true);
-              }
-            },
-            child: const Text('立即登入'),
-          ),
-        ],
-      ),
-    );
-  }
 
   @override
   void dispose() {
@@ -186,25 +157,19 @@ class _GradesPageState extends State<GradesPage> with TickerProviderStateMixin {
     }
 
     if (_errorMessage != null) {
-      final colorScheme = Theme.of(context).colorScheme;
       return Scaffold(
         appBar: AppBar(
           title: Text(l10n.grades),
         ),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.error_outline, size: 64, color: colorScheme.error),
-              const SizedBox(height: 16),
-              Text(_errorMessage!),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: _loadGrades,
-                child: const Text('重試'),
-              ),
-            ],
-          ),
+        body: LoginRequiredView(
+          featureName: '成績',
+          description: '訪客模式無法查看成績\n登入後可查看並緩存成績資料',
+          onLoginTap: () async {
+            final result = await Navigator.of(context).pushNamed('/login');
+            if (result == true && mounted) {
+              _loadGrades();
+            }
+          },
         ),
       );
     }

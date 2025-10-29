@@ -14,7 +14,7 @@ class FeatureConfig {
     'grades': true,              // 成績
     
     // 其他功能
-    'credits': true,             // 學分 - 已啟用
+    'credits': true,             // 學分
     'campus_map': true,          // 校園地圖
     'empty_classroom': true,     // 空教室查詢
     'club_announcements': false, // 社團公告 - 已隱藏

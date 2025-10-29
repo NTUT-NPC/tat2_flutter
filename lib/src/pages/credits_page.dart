@@ -5,6 +5,7 @@ import '../models/course_credit_models.dart';
 import '../services/credits_service.dart';
 import '../core/auth/auth_manager.dart';
 import '../widgets/graduation_settings_dialog.dart';
+import '../widgets/login_required_view.dart';
 
 /// 學分計算頁面（M3 設計，功能按照 TAT）
 class CreditsPage extends StatefulWidget {
@@ -157,21 +158,15 @@ class _CreditsPageState extends State<CreditsPage> {
     }
 
     if (_errorMessage != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error_outline, size: 64, color: Colors.red),
-            const SizedBox(height: 16),
-            Text(_errorMessage!),
-            const SizedBox(height: 16),
-            FilledButton.icon(
-              onPressed: _loadCreditStatistics,
-              icon: const Icon(Icons.refresh),
-              label: const Text('重試'),
-            ),
-          ],
-        ),
+      return LoginRequiredView(
+        featureName: '學分計算',
+        description: '訪客模式無法查看學分\n登入後可查看並緩存學分資料',
+        onLoginTap: () async {
+          final result = await Navigator.of(context).pushNamed('/login');
+          if (result == true && mounted) {
+            _loadCreditStatistics();
+          }
+        },
       );
     }
 

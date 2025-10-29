@@ -6,6 +6,7 @@ import '../services/ischool_plus_service.dart';
 import '../services/ntut_api_service.dart';
 import '../services/ischool_plus_cache_service.dart';
 import '../services/badge_service.dart';
+import '../widgets/login_required_view.dart';
 import 'ischool_plus/announcement_list_page.dart';
 import 'ischool_plus/course_files_page.dart';
 
@@ -127,30 +128,14 @@ class _NtutLearnPageState extends State<NtutLearnPage> {
           _isLoggedIn = success;
           _isLoggingIn = false;
         });
-
-        if (!success) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('登入 i學院失敗，請確認已登入學校帳號'),
-              backgroundColor: Theme.of(context).colorScheme.primary,
-              behavior: SnackBarBehavior.floating,
-              duration: const Duration(seconds: 2),
-            ),
-          );
-        }
+        // 登入失敗時不顯示 SnackBar，用戶會看到登入按鈕
       }
     } catch (e) {
       if (mounted) {
         setState(() {
           _isLoggingIn = false;
         });
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('登入時發生錯誤：$e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        // 登入異常時也不顯示 SnackBar
       }
     }
   }
@@ -378,36 +363,15 @@ class _NtutLearnPageState extends State<NtutLearnPage> {
   }
 
   Widget _buildLoginPrompt() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.school, size: 80, color: Colors.grey.withOpacity(0.5)),
-          const SizedBox(height: 24),
-          const Text(
-            '北科i學園',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 16),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Text(
-              '查看課程公告、下載教材',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey[600]),
-            ),
-          ),
-          const SizedBox(height: 32),
-          ElevatedButton.icon(
-            onPressed: _login,
-            icon: const Icon(Icons.login),
-            label: const Text('登入 i學園'),
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-            ),
-          ),
-        ],
-      ),
+    return LoginRequiredView(
+      featureName: 'i學園',
+      description: '訪客模式無法使用 i學園\n這是在線功能，需要登入後才能查看課程公告、下載教材',
+      onLoginTap: () async {
+        final result = await Navigator.of(context).pushNamed('/login');
+        if (result == true && mounted) {
+          _login();
+        }
+      },
     );
   }
 
