@@ -1,8 +1,8 @@
 import 'dart:convert';
-import 'dart:developer' as dev;
 import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
+import 'package:flutter/foundation.dart';
 import 'package:html/parser.dart' as html_parser;
 import 'package:html/dom.dart' as html;
 import '../models/ischool_plus/announcement.dart';
@@ -13,13 +13,14 @@ import '../models/ischool_plus/course_file.dart';
 class _LockRequest {
   final Completer<void> completer;
   final bool highPriority;
-  final String courseId; // 用於調試
+  final String courseId;
+  final DateTime requestTime;
 
   _LockRequest({
     required this.completer,
     required this.highPriority,
     required this.courseId,
-  });
+  }) : requestTime = DateTime.now();
 }
 
 /// i學院連接器 - 參考 TAT 實作
@@ -31,7 +32,11 @@ class ISchoolPlusConnector {
   
   // 用於防止並發請求導致課程選擇混亂的互斥鎖
   final List<_LockRequest> _lockQueue = []; // 鎖請求隊列
-  _LockRequest? _executing; // 當前正在執行的請求
+  bool _isExecuting = false; // 是否有任務正在執行
+  String? _currentCourseId; // 當前正在處理的課程 ID
+  
+  // 用於調試
+  int _completedRequests = 0;
 
   ISchoolPlusConnector({required Dio dio}) : _dio = dio {
     // 不覆蓋傳入的 Dio 配置，保持共享的設置
@@ -158,7 +163,7 @@ class ISchoolPlusConnector {
       final response = await _dio.get('${_baseUrl}learn/mooc_sysbar.php');
       
       if (response.statusCode != 200) {
-        print('[ISchoolPlus] 課程 $courseId: 無法取得課程列表 (status: ${response.statusCode})');
+        debugPrint('[ISchoolPlus] 無法取得課程列表 (status: ${response.statusCode})');
         return false;
       }
       
@@ -167,7 +172,7 @@ class ISchoolPlusConnector {
       final selectElement = tagNode.getElementById('selcourse');
       
       if (selectElement == null) {
-        print('[ISchoolPlus] 課程 $courseId: 找不到課程選單元素');
+        debugPrint('[ISchoolPlus] 找不到課程選單元素');
         return false;
       }
       
@@ -186,7 +191,7 @@ class ISchoolPlusConnector {
       }
       
       if (courseValue == null) {
-        print('[ISchoolPlus] 課程 $courseId: 在課程列表中找不到');
+        debugPrint('[ISchoolPlus] 在課程列表中找不到課程: $courseId');
         return false;
       }
       
@@ -202,18 +207,26 @@ class ISchoolPlusConnector {
       );
       
       if (gotoResponse.statusCode != 200) {
-        print('[ISchoolPlus] 選擇課程失敗: $courseId');
+        debugPrint('[ISchoolPlus] 選擇課程失敗 (status: ${gotoResponse.statusCode})');
         return false;
+      }
+      
+      // 重要：選擇課程後，需要訪問課程首頁來初始化 session
+      try {
+        await _dio.get('${_baseUrl}learn/index.php');
+      } catch (e) {
+        debugPrint('[ISchoolPlus] 訪問課程首頁失敗: $e');
       }
       
       return true;
     } catch (e) {
-      print('[ISchoolPlus] 課程 $courseId: 選擇課程異常 - $e');
+      debugPrint('[ISchoolPlus] 選擇課程異常: $e');
       return false;
     }
   }
 
   /// 獲取鎖（支持優先級）
+  /// 確保在選擇課程之前獲取鎖，選擇課程和獲取資料是原子性操作
   Future<void> _acquireLock(String courseId, {bool highPriority = false}) async {
     final completer = Completer<void>();
     final request = _LockRequest(
@@ -222,22 +235,19 @@ class ISchoolPlusConnector {
       courseId: courseId,
     );
 
-    // 檢查是否有正在執行或等待的請求
-    final hasActiveOrWaiting = _executing != null || _lockQueue.isNotEmpty;
-    
     // 將請求加入隊列
-    if (highPriority && hasActiveOrWaiting) {
+    if (highPriority) {
       // 高優先級：插入到第一個低優先級請求之前
       int insertIndex = 0;
       while (insertIndex < _lockQueue.length && _lockQueue[insertIndex].highPriority) {
         insertIndex++;
       }
       _lockQueue.insert(insertIndex, request);
-      print('[ISchoolPlus] 高優先級請求 $courseId 插隊到位置 $insertIndex (隊列: ${_lockQueue.length}, 正在執行: ${_executing?.courseId ?? "無"})');
+      debugPrint('[ISchoolPlus] [HIGH] 高優先級請求 $courseId 插隊到位置 $insertIndex (隊列: ${_lockQueue.length}, 正在執行: $_isExecuting, 當前課程: $_currentCourseId)');
     } else {
       // 低優先級：加到隊列末尾
       _lockQueue.add(request);
-      print('[ISchoolPlus] 低優先級請求 $courseId 加入隊列 (隊列: ${_lockQueue.length}, 正在執行: ${_executing?.courseId ?? "無"})');
+      debugPrint('[ISchoolPlus] [LOW] 低優先級請求 $courseId 加入隊列 (隊列: ${_lockQueue.length}, 正在執行: $_isExecuting, 當前課程: $_currentCourseId)');
     }
 
     // 嘗試處理隊列
@@ -246,13 +256,13 @@ class ISchoolPlusConnector {
     // 等待輪到自己
     await completer.future;
     
-    print('[ISchoolPlus] 請求 $courseId 獲得鎖並開始執行');
+    debugPrint('[ISchoolPlus] [LOCK] 請求 $courseId 獲得鎖並開始執行');
   }
 
   /// 處理鎖隊列
   void _processQueue() {
     // 如果正在處理或隊列為空，則不處理
-    if (_executing != null || _lockQueue.isEmpty) {
+    if (_isExecuting || _lockQueue.isEmpty) {
       return;
     }
 
@@ -260,26 +270,32 @@ class ISchoolPlusConnector {
     final first = _lockQueue.removeAt(0);
     
     // 標記為正在執行
-    _executing = first;
-    print('[ISchoolPlus] 準備處理請求 ${first.courseId} (隊列剩餘: ${_lockQueue.length})');
+    _isExecuting = true;
+    _currentCourseId = first.courseId;
+    debugPrint('[ISchoolPlus] [START] 開始處理請求 ${first.courseId} (優先級: ${first.highPriority ? "高" : "低"}, 隊列剩餘: ${_lockQueue.length})');
     
     // 完成請求（讓它開始執行）
     first.completer.complete();
   }
 
   /// 釋放鎖
-  void _releaseLock() {
-    if (_executing == null) {
-      print('[ISchoolPlus] 警告：嘗試釋放鎖但沒有正在執行的請求');
+  void _releaseLock(String courseId) {
+    if (!_isExecuting) {
+      debugPrint('[ISchoolPlus] [WARN] 警告：嘗試釋放鎖但沒有正在執行的請求 (courseId: $courseId)');
       return;
     }
 
-    final courseId = _executing!.courseId;
-    _executing = null;
-    print('[ISchoolPlus] 請求 $courseId 釋放鎖 (隊列剩餘: ${_lockQueue.length})');
+    if (_currentCourseId != courseId) {
+      debugPrint('[ISchoolPlus] [WARN] 警告：釋放鎖的課程ID不匹配 (預期: $_currentCourseId, 實際: $courseId)');
+    }
+
+    _completedRequests++;
+    debugPrint('[ISchoolPlus] [RELEASE] 請求 $courseId 釋放鎖 (已完成: $_completedRequests, 隊列剩餘: ${_lockQueue.length})');
+    
+    _isExecuting = false;
+    _currentCourseId = null;
 
     // 處理下一個請求
-    // 注意：_processQueue 會檢查 _executing 是否為 null，所以這裡是安全的
     _processQueue();
   }
 
@@ -287,13 +303,13 @@ class ISchoolPlusConnector {
   /// [highPriority] 是否為高優先級請求（手動操作）
   Future<List<ISchoolPlusAnnouncement>> getCourseAnnouncements(
       String courseId, {bool highPriority = false}) async {
-    print('[ISchoolPlus] 請求公告列表: $courseId (高優先級: $highPriority)');
+    debugPrint('[ISchoolPlus] 請求公告列表: $courseId (高優先級: $highPriority)');
     
     // 獲取鎖，高優先級請求會插隊
     await _acquireLock(courseId, highPriority: highPriority);
     
     try {
-      print('[ISchoolPlus] 開始處理公告列表: $courseId');
+      debugPrint('[ISchoolPlus] 開始處理公告列表: $courseId');
       
       // 先選擇課程
       if (!await _selectCourse(courseId)) {
@@ -349,7 +365,7 @@ class ISchoolPlusConnector {
       try {
         jsonData = jsonDecode(announcementsResponse.data);
       } catch (e) {
-        print('[ISchoolPlus] 課程 $courseId JSON 解析失敗');
+        debugPrint('[ISchoolPlus] 課程 $courseId JSON 解析失敗');
         throw Exception('JSON 解析失敗');
       }
       
@@ -357,7 +373,7 @@ class ISchoolPlusConnector {
       
       // code = -1 表示課程沒有公告或沒有權限
       if (code != 0) {
-        print('[ISchoolPlus] 課程 $courseId 沒有公告 (code: $code)');
+        debugPrint('[ISchoolPlus] 課程 $courseId 沒有公告 (code: $code)');
         // 直接返回空列表，不是錯誤
         return [];
       }
@@ -368,7 +384,7 @@ class ISchoolPlusConnector {
       
       // 檢查 data 是否為空或非 Map
       if (data == null || data is! Map) {
-        print('[ISchoolPlus] 課程 $courseId 沒有公告數據');
+        debugPrint('[ISchoolPlus] 課程 $courseId 沒有公告數據');
         return [];
       }
       
@@ -390,13 +406,15 @@ class ISchoolPlusConnector {
         }
       }
 
+      debugPrint('[ISchoolPlus] 課程 $courseId 取得 ${announcements.length} 個公告');
       return announcements;
     } catch (e) {
+      debugPrint('[ISchoolPlus] 取得公告列表失敗: $e');
       // 重新拋出異常讓上層處理
       rethrow;
     } finally {
       // 釋放鎖
-      _releaseLock();
+      _releaseLock(courseId);
     }
   }
 
@@ -405,17 +423,17 @@ class ISchoolPlusConnector {
   /// [highPriority] 是否為高優先級請求（手動操作）
   Future<ISchoolPlusAnnouncementDetail?> getAnnouncementDetail(
       ISchoolPlusAnnouncement announcement, {required String courseId, bool highPriority = false}) async {
-    print('[ISchoolPlus] 請求公告詳情: $courseId (高優先級: $highPriority)');
+    debugPrint('[ISchoolPlus] 請求公告詳情: $courseId (高優先級: $highPriority)');
     
     // 獲取鎖，高優先級請求會插隊
     await _acquireLock(courseId, highPriority: highPriority);
     
     try {
-      print('[ISchoolPlus] 開始處理公告詳情: $courseId');
+      debugPrint('[ISchoolPlus] 開始處理公告詳情: $courseId');
       
       // 先選擇課程
       if (!await _selectCourse(courseId)) {
-        print('[ISchoolPlus] 無法選擇課程: $courseId');
+        debugPrint('[ISchoolPlus] 無法選擇課程: $courseId');
         return null;
       }
       
@@ -439,7 +457,7 @@ class ISchoolPlusConnector {
       final tagNode = html_parser.parse(response.data);
       final nodeInfo = tagNode.querySelector('.main.node-info');
       if (nodeInfo == null) {
-        dev.log('[ISchoolPlus] Node info not found');
+        debugPrint('[ISchoolPlus] Node info not found');
         return null;
       }
 
@@ -460,6 +478,7 @@ class ISchoolPlusConnector {
         files[fileName] = _baseUrl + href;
       }
 
+      debugPrint('[ISchoolPlus] 課程 $courseId 公告詳情取得成功');
       return ISchoolPlusAnnouncementDetail(
         title: title,
         sender: authorName,
@@ -468,28 +487,29 @@ class ISchoolPlusConnector {
         files: files,
       );
     } catch (e, stackTrace) {
-      dev.log('[ISchoolPlus] Get announcement detail error: $e',
-          stackTrace: stackTrace);
+      debugPrint('[ISchoolPlus] Get announcement detail error: $e');
+      debugPrint('[ISchoolPlus] StackTrace: $stackTrace');
       return null;
     } finally {
       // 釋放鎖
-      _releaseLock();
+      _releaseLock(courseId);
     }
   }
 
   /// 取得課程檔案列表
   /// [highPriority] 是否為高優先級請求（手動操作）
   Future<List<ISchoolPlusCourseFile>> getCourseFiles(String courseId, {bool highPriority = false}) async {
-    print('[ISchoolPlus] 請求檔案列表: $courseId (高優先級: $highPriority)');
+    debugPrint('[ISchoolPlus] 請求檔案列表: $courseId (高優先級: $highPriority)');
     
     // 獲取鎖，高優先級請求會插隊
     await _acquireLock(courseId, highPriority: highPriority);
     
     try {
-      print('[ISchoolPlus] 開始處理檔案列表: $courseId');
+      debugPrint('[ISchoolPlus] 開始處理檔案列表: $courseId');
       
       // 先選擇課程
       if (!await _selectCourse(courseId)) {
+        debugPrint('[ISchoolPlus] 選擇課程失敗');
         return [];
       }
 
@@ -497,27 +517,7 @@ class ISchoolPlusConnector {
       final launchResponse = await _dio.get('${_baseUrl}learn/path/launch.php');
       final launchHtml = launchResponse.data.toString();
       
-      final cidRegex = RegExp(r'cid=([\w|-]+,)');
-      final cidMatch = cidRegex.firstMatch(launchHtml);
-      if (cidMatch == null) {
-        return [];
-      }
-      final cid = cidMatch.group(1);
-
-      // Step 2: 取得 path tree
-      final pathTreeResponse = await _dio.get(
-        '${_baseUrl}learn/path/pathtree.php',
-        queryParameters: {'cid': cid},
-      );
-
-      final tagNode = html_parser.parse(pathTreeResponse.data);
-      final form = tagNode.getElementById('fetchResourceForm');
-      if (form == null) {
-        dev.log('[ISchoolPlus] Fetch resource form not found');
-        return [];
-      }
-
-      final inputs = form.getElementsByTagName('input');
+      // 初始化 downloadPost（即使跳過 launch.php 也需要）
       final Map<String, String> downloadPost = {
         'is_player': '',
         'href': '',
@@ -529,16 +529,52 @@ class ISchoolPlusConnector {
         'course_id': '',
         'read_key': '',
       };
+      
+      // 檢查是否返回了 HTML 錯誤頁面（可能是課程沒有教材）
+      if (launchHtml.contains('<!DOCTYPE html>') && launchHtml.contains('<html')) {
+        debugPrint('[ISchoolPlus] launch.php 返回了 HTML 頁面，嘗試直接訪問 SCORM XML');
+      } else {
+        // 正常解析 cid
+        final cidRegex = RegExp(r'cid=([\w|-]+,)');
+        final cidMatch = cidRegex.firstMatch(launchHtml);
+        if (cidMatch == null) {
+          debugPrint('[ISchoolPlus] 無法從 launch.php 解析 cid');
+          return [];
+        }
+        final cid = cidMatch.group(1);
 
-      for (final input in inputs) {
-        final key = input.attributes['name'];
-        if (key != null && downloadPost.containsKey(key)) {
-          downloadPost[key] = input.attributes['value'] ?? '';
+        // Step 2: 取得 path tree
+        final pathTreeResponse = await _dio.get(
+          '${_baseUrl}learn/path/pathtree.php',
+          queryParameters: {'cid': cid},
+        );
+        
+        final tagNode = html_parser.parse(pathTreeResponse.data);
+        final form = tagNode.getElementById('fetchResourceForm');
+        if (form == null) {
+          debugPrint('[ISchoolPlus] Fetch resource form not found');
+          return [];
+        }
+
+        final inputs = form.getElementsByTagName('input');
+        for (final input in inputs) {
+          final key = input.attributes['name'];
+          if (key != null && downloadPost.containsKey(key)) {
+            downloadPost[key] = input.attributes['value'] ?? '';
+          }
         }
       }
 
       // Step 3: 取得檔案 XML
       final scormResponse = await _dio.get('${_baseUrl}learn/path/SCORM_loadCA.php');
+      final scormData = scormResponse.data.toString();
+      
+      // 檢查是否返回 HTML（表示沒有教材）
+      if (scormData.contains('<!DOCTYPE html>') || scormData.contains('<html')) {
+        debugPrint('[ISchoolPlus] SCORM_loadCA.php 返回了 HTML 頁面，此課程可能沒有教材檔案');
+        return [];
+      }
+      
       final scormNode = html_parser.parse(scormResponse.data);
       
       final itemNodes = scormNode.getElementsByTagName('item');
@@ -562,7 +598,9 @@ class ISchoolPlusConnector {
           }
         }
 
-        if (matchedResource == null) continue;
+        if (matchedResource == null) {
+          continue;
+        }
 
         final base = matchedResource.attributes['xml:base'] ?? '';
         final href = matchedResource.attributes['href'] ?? '';
@@ -584,15 +622,15 @@ class ISchoolPlusConnector {
         ));
       }
 
-      dev.log('[ISchoolPlus] Got ${courseFiles.length} files');
+      debugPrint('[ISchoolPlus] 課程 $courseId 取得 ${courseFiles.length} 個檔案');
       return courseFiles;
     } catch (e, stackTrace) {
-      dev.log('[ISchoolPlus] Get course files error: $e',
-          stackTrace: stackTrace);
+      debugPrint('[ISchoolPlus] 取得課程檔案錯誤: $e');
+      debugPrint('[ISchoolPlus] StackTrace: $stackTrace');
       return [];
     } finally {
       // 釋放鎖
-      _releaseLock();
+      _releaseLock(courseId);
     }
   }
 
@@ -662,8 +700,9 @@ class ISchoolPlusConnector {
         return [url, url];
       }
     } catch (e, stack) {
-      dev.log('[ISchoolPlus] Get real file URL error: $e', stackTrace: stack);
-      dev.log('[ISchoolPlus] Response: $result');
+      debugPrint('[ISchoolPlus] Get real file URL error: $e');
+      debugPrint('[ISchoolPlus] StackTrace: $stack');
+      debugPrint('[ISchoolPlus] Response: $result');
       return null;
     }
     return null;
@@ -683,20 +722,20 @@ class ISchoolPlusConnector {
     CancelToken? cancelToken,
     Map<String, dynamic>? header,
   }) async {
-    dev.log('[ISchoolPlus] Download URL: $url');
-    dev.log('[ISchoolPlus] Download headers: $header');
+    debugPrint('[ISchoolPlus] Download URL: $url');
+    debugPrint('[ISchoolPlus] Download headers: $header');
     
     // 打印當前的 cookies
     try {
       final uri = Uri.parse(url);
       final cookieManager = _dio.interceptors.whereType<CookieManager>().first;
       final cookies = await cookieManager.cookieJar.loadForRequest(uri);
-      dev.log('[ISchoolPlus] Cookies for ${uri.host}: ${cookies.length} cookies');
+      debugPrint('[ISchoolPlus] Cookies for ${uri.host}: ${cookies.length} cookies');
       for (final cookie in cookies) {
-        dev.log('[ISchoolPlus] Cookie: ${cookie.name}=${cookie.value.substring(0, cookie.value.length > 20 ? 20 : cookie.value.length)}...');
+        debugPrint('[ISchoolPlus] Cookie: ${cookie.name}=${cookie.value.substring(0, cookie.value.length > 20 ? 20 : cookie.value.length)}...');
       }
     } catch (e) {
-      dev.log('[ISchoolPlus] Failed to print cookies: $e');
+      debugPrint('[ISchoolPlus] Failed to print cookies: $e');
     }
     
     // 合併默認 headers 和自定義 headers
@@ -704,7 +743,7 @@ class ISchoolPlusConnector {
     if (header != null) {
       mergedHeaders.addAll(header);
     }
-    dev.log('[ISchoolPlus] Merged headers: $mergedHeaders');
+    debugPrint('[ISchoolPlus] Merged headers: $mergedHeaders');
     
     await _dio
         .downloadUri(
@@ -719,7 +758,8 @@ class ISchoolPlusConnector {
     )
         .catchError(
       (onError, stack) {
-        dev.log('[ISchoolPlus] Download error: $onError', stackTrace: stack);
+        debugPrint('[ISchoolPlus] Download error: $onError');
+        debugPrint('[ISchoolPlus] StackTrace: $stack');
         throw onError;
       },
     );
