@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../models/ischool_plus/announcement.dart';
 import '../../models/ischool_plus/announcement_detail.dart';
 import '../../services/ischool_plus_service.dart';
@@ -846,6 +847,36 @@ class _AnnouncementBottomSheetState extends State<_AnnouncementBottomSheet> {
               "br": Style(
                 margin: Margins.only(bottom: 4),
               ),
+              "a": Style(
+                color: Colors.blue,
+                textDecoration: TextDecoration.underline,
+              ),
+            },
+            onLinkTap: (url, attributes, element) async {
+              if (url != null) {
+                try {
+                  final uri = Uri.parse(url);
+                  if (await canLaunchUrl(uri)) {
+                    await launchUrl(
+                      uri,
+                      mode: LaunchMode.externalApplication,
+                    );
+                  } else {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('無法開啟連結：$url')),
+                      );
+                    }
+                  }
+                } catch (e) {
+                  debugPrint('[AnnouncementDialog] Error launching URL: $e');
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('開啟連結失敗：$e')),
+                    );
+                  }
+                }
+              }
             },
           ),
           // 附件
