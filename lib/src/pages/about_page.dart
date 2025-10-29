@@ -42,6 +42,7 @@ class _AboutPageState extends State<AboutPage> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(
@@ -52,23 +53,26 @@ class _AboutPageState extends State<AboutPage> {
           children: [
             // App 圖示和名稱
             const SizedBox(height: 40),
-            Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(20),
-                child: Image.asset(
-                  'assets/images/logo_square.png',
-                  fit: BoxFit.contain,
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
+            // 暫時移除圖片顯示
+            // Container(
+            //   width: 120,
+            //   height: 120,
+            //   decoration: BoxDecoration(
+            //     borderRadius: BorderRadius.circular(20),
+            //   ),
+            //   child: ClipRRect(
+            //     borderRadius: BorderRadius.circular(20),
+            //     child: Image.asset(
+            //       isDarkMode 
+            //         ? 'assets/images/splash-dark.png'
+            //         : 'assets/images/splash.png',
+            //       fit: BoxFit.contain,
+            //     ),
+            //   ),
+            // ),
+            // const SizedBox(height: 16),
             Text(
-              'QAQ 北科生活',
+              'TAT 北科生活',
               style: theme.textTheme.headlineMedium?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
@@ -187,7 +191,7 @@ class _AboutPageState extends State<AboutPage> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Text(
-                '© 2025 QAQ\n'
+                '© 2025 TAT\n'
                 '僅供學習交流使用',
                 textAlign: TextAlign.center,
                 style: TextStyle(

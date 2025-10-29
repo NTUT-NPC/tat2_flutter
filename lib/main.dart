@@ -248,7 +248,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
           );
           
           return MaterialApp(
-            title: 'NTUT 課表查詢',
+            title: 'TAT 北科生活',
             theme: AppTheme.lightTheme(seedColor: seedColor),
             darkTheme: AppTheme.darkTheme(seedColor: seedColor),
             themeMode: themeService.themeMode,

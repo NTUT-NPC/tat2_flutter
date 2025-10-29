@@ -92,7 +92,7 @@ class _OtherFeaturesPageState extends State<OtherFeaturesPage> {
                                 ),
                             ],
                           ),
-                          title: Text(item.label),
+                          title: Text(item.getLabel(context)),
                           trailing: const Icon(Icons.chevron_right),
                           onTap: () {
                             Navigator.push(
@@ -113,7 +113,7 @@ class _OtherFeaturesPageState extends State<OtherFeaturesPage> {
                 children: [
                   ListTile(
                     leading: Icon(item.icon),
-                    title: Text(item.label),
+                    title: Text(item.getLabel(context)),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () {
                       Navigator.push(

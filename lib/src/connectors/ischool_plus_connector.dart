@@ -30,8 +30,8 @@ class ISchoolPlusConnector {
   final Dio _dio;
   
   // 用於防止並發請求導致課程選擇混亂的互斥鎖
-  final List<_LockRequest> _lockQueue = []; // 鎖請求隊列（等待執行的請求）
-  bool _isLocked = false; // 是否有請求正在執行（簡單的布爾標記）
+  final List<_LockRequest> _lockQueue = []; // 鎖請求隊列
+  _LockRequest? _executing; // 當前正在執行的請求
 
   ISchoolPlusConnector({required Dio dio}) : _dio = dio {
     // 不覆蓋傳入的 Dio 配置，保持共享的設置
@@ -222,21 +222,22 @@ class ISchoolPlusConnector {
       courseId: courseId,
     );
 
-    final queueSize = _lockQueue.length;
+    // 檢查是否有正在執行或等待的請求
+    final hasActiveOrWaiting = _executing != null || _lockQueue.isNotEmpty;
     
     // 將請求加入隊列
-    if (highPriority && (_isLocked || _lockQueue.isNotEmpty)) {
+    if (highPriority && hasActiveOrWaiting) {
       // 高優先級：插入到第一個低優先級請求之前
       int insertIndex = 0;
       while (insertIndex < _lockQueue.length && _lockQueue[insertIndex].highPriority) {
         insertIndex++;
       }
       _lockQueue.insert(insertIndex, request);
-      print('[ISchoolPlus] 高優先級請求 $courseId 插隊到位置 $insertIndex (隊列: ${_lockQueue.length}, 鎖定: $_isLocked, 原隊列: $queueSize)');
+      print('[ISchoolPlus] 高優先級請求 $courseId 插隊到位置 $insertIndex (隊列: ${_lockQueue.length}, 正在執行: ${_executing?.courseId ?? "無"})');
     } else {
       // 低優先級：加到隊列末尾
       _lockQueue.add(request);
-      print('[ISchoolPlus] 低優先級請求 $courseId 加入隊列 (隊列: ${_lockQueue.length}, 鎖定: $_isLocked, 原隊列: $queueSize)');
+      print('[ISchoolPlus] 低優先級請求 $courseId 加入隊列 (隊列: ${_lockQueue.length}, 正在執行: ${_executing?.courseId ?? "無"})');
     }
 
     // 嘗試處理隊列
@@ -245,22 +246,21 @@ class ISchoolPlusConnector {
     // 等待輪到自己
     await completer.future;
     
-    // completer 完成時，_isLocked 已經在 _processQueue 中設置為 true 了
     print('[ISchoolPlus] 請求 $courseId 獲得鎖並開始執行');
   }
 
   /// 處理鎖隊列
   void _processQueue() {
     // 如果正在處理或隊列為空，則不處理
-    if (_isLocked || _lockQueue.isEmpty) {
+    if (_executing != null || _lockQueue.isEmpty) {
       return;
     }
 
     // 移除並獲取隊列中的第一個請求
     final first = _lockQueue.removeAt(0);
     
-    // 先設置鎖定狀態（在 complete 之前！）
-    _isLocked = true;
+    // 標記為正在執行
+    _executing = first;
     print('[ISchoolPlus] 準備處理請求 ${first.courseId} (隊列剩餘: ${_lockQueue.length})');
     
     // 完成請求（讓它開始執行）
@@ -269,23 +269,18 @@ class ISchoolPlusConnector {
 
   /// 釋放鎖
   void _releaseLock() {
-    if (!_isLocked) {
-      print('[ISchoolPlus] 警告：嘗試釋放鎖但當前未鎖定');
+    if (_executing == null) {
+      print('[ISchoolPlus] 警告：嘗試釋放鎖但沒有正在執行的請求');
       return;
     }
 
-    print('[ISchoolPlus] 釋放鎖 (隊列剩餘: ${_lockQueue.length})');
+    final courseId = _executing!.courseId;
+    _executing = null;
+    print('[ISchoolPlus] 請求 $courseId 釋放鎖 (隊列剩餘: ${_lockQueue.length})');
 
-    // 如果有等待的請求，不要解鎖，而是直接處理下一個
-    if (_lockQueue.isNotEmpty) {
-      // 臨時解鎖以便 _processQueue 可以執行
-      _isLocked = false;
-      _processQueue();
-      // _processQueue 會重新設置 _isLocked = true
-    } else {
-      // 沒有等待的請求，解鎖
-      _isLocked = false;
-    }
+    // 處理下一個請求
+    // 注意：_processQueue 會檢查 _executing 是否為 null，所以這裡是安全的
+    _processQueue();
   }
 
   /// 取得課程公告列表

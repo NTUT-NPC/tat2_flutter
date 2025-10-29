@@ -1,4 +1,4 @@
-# QAQ Flutter App
+# TAT Flutter App
 
 
 北科大校園資訊 App - 課表、成績、行事曆一站式查詢

@@ -3,6 +3,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
 import 'ntut_api_service.dart';
 import '../config/feature_config.dart';
+import '../l10n/app_localizations.dart';
 import '../pages/course_table_page.dart';
 import '../pages/calendar_page.dart';
 import '../pages/course_search_page.dart';
@@ -19,16 +20,19 @@ import '../pages/food_map_page.dart';
 /// 導航項目配置
 class NavItem {
   final String id;
-  final String label;
+  final String Function(BuildContext) labelBuilder; // 改為函數以支援多語言
   final IconData icon;
   final Widget Function(BuildContext) pageBuilder;
 
   const NavItem({
     required this.id,
-    required this.label,
+    required this.labelBuilder,
     required this.icon,
     required this.pageBuilder,
   });
+  
+  // 取得標籤文字（向後兼容的便利方法）
+  String getLabel(BuildContext context) => labelBuilder(context);
 }
 
 /// 導航欄配置服務
@@ -56,55 +60,55 @@ class NavigationConfigService extends ChangeNotifier {
   final List<NavItem> _allNavItems = [
     NavItem(
       id: 'course_table',
-      label: '課表',
+      labelBuilder: (context) => AppLocalizations.of(context).courseTable,
       icon: Icons.calendar_view_week,
       pageBuilder: (context) => const CourseTablePage(),
     ),
     NavItem(
       id: 'calendar',
-      label: '日曆',
+      labelBuilder: (context) => AppLocalizations.of(context).calendar,
       icon: Icons.calendar_today,
       pageBuilder: (context) => const CalendarPage(),
     ),
     NavItem(
       id: 'course_search',
-      label: '課程查詢',
+      labelBuilder: (context) => AppLocalizations.of(context).courseSearch,
       icon: Icons.search,
       pageBuilder: (context) => const CourseSearchPage(),
     ),
     NavItem(
       id: 'grades',
-      label: '成績',
+      labelBuilder: (context) => AppLocalizations.of(context).grades,
       icon: Icons.calculate,
       pageBuilder: (context) => const GradesPage(),
     ),
     NavItem(
       id: 'credits',
-      label: '學分',
+      labelBuilder: (context) => AppLocalizations.of(context).credits,
       icon: Icons.grade,
       pageBuilder: (context) => const CreditsPage(),
     ),
     NavItem(
       id: 'campus_map',
-      label: '校園地圖',
+      labelBuilder: (context) => AppLocalizations.of(context).campusMap,
       icon: Icons.map,
       pageBuilder: (context) => const CampusMapPage(),
     ),
     NavItem(
       id: 'empty_classroom',
-      label: '空教室查詢',
+      labelBuilder: (context) => AppLocalizations.of(context).emptyClassroom,
       icon: Icons.meeting_room,
       pageBuilder: (context) => const EmptyClassroomPage(),
     ),
     NavItem(
       id: 'club_announcements',
-      label: '社團公告',
+      labelBuilder: (context) => AppLocalizations.of(context).clubAnnouncements,
       icon: Icons.campaign,
       pageBuilder: (context) => const ClubAnnouncementsPage(),
     ),
     NavItem(
       id: 'admin_system',
-      label: '校務系統',
+      labelBuilder: (context) => AppLocalizations.of(context).adminSystem,
       icon: Icons.admin_panel_settings,
       pageBuilder: (context) {
         // 從 Provider 取得 NtutApiService
@@ -114,19 +118,19 @@ class NavigationConfigService extends ChangeNotifier {
     ),
     NavItem(
       id: 'messages',
-      label: '訊息',
+      labelBuilder: (context) => AppLocalizations.of(context).messages,
       icon: Icons.message,
       pageBuilder: (context) => const MessagesPage(),
     ),
     NavItem(
       id: 'ntut_learn',
-      label: '北科i學園',
+      labelBuilder: (context) => AppLocalizations.of(context).ntutLearn,
       icon: Icons.school,
       pageBuilder: (context) => const NtutLearnPage(),
     ),
     NavItem(
       id: 'food_map',
-      label: '美食地圖',
+      labelBuilder: (context) => AppLocalizations.of(context).foodMap,
       icon: Icons.restaurant,
       pageBuilder: (context) => const FoodMapPage(),
     ),
