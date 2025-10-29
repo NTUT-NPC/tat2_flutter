@@ -178,6 +178,7 @@ class CourseSearchService {
   }) async {
     try {
       print('[CourseSearch] 取得學程列表: year=$year, semester=$semester');
+      debugPrint('[CourseSearch] Request URL: $backendUrl/programs');
 
       final response = await _dio.get(
         '/programs',
@@ -187,15 +188,30 @@ class CourseSearchService {
         },
       );
 
+      debugPrint('[CourseSearch] Response status: ${response.statusCode}');
+      debugPrint('[CourseSearch] Response data: ${response.data}');
+
       if (response.statusCode == 200 && response.data['success'] == true) {
-        print('[CourseSearch] 成功取得學程列表');
-        return response.data['data'];
+        // 後端直接返回 programs 在根層級，不是在 data 裡面
+        final programs = response.data['programs'];
+        debugPrint('[CourseSearch] 成功取得學程列表');
+        debugPrint('[CourseSearch] programs 類型: ${programs?.runtimeType}');
+        debugPrint('[CourseSearch] programs 長度: ${(programs as List?)?.length}');
+        
+        // 返回包含 programs 的 Map，以符合前端預期的格式
+        return {
+          'programs': programs ?? [],
+          'year': response.data['year'],
+          'semester': response.data['semester'],
+          'updatedAt': response.data['updatedAt'],
+        };
       } else {
         print('[CourseSearch] 取得學程列表失敗: ${response.data}');
         return null;
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       print('[CourseSearch] 取得學程列表錯誤: $e');
+      debugPrint('[CourseSearch] Stack trace: $stackTrace');
       return null;
     }
   }

@@ -14,8 +14,14 @@ class ISchoolPlusService {
   /// 初始化 i學院服務
   /// 
   /// 必須先調用此方法並傳入 NtutApiService 實例
+  /// 如果已初始化，則不會重複創建實例
   static void initialize(NtutApiService ntutApiService) {
-    _instance = ISchoolPlusService._(ntutApiService);
+    if (_instance == null) {
+      _instance = ISchoolPlusService._(ntutApiService);
+      print('[ISchoolPlusService] 初始化新的服務實例');
+    } else {
+      print('[ISchoolPlusService] 服務已初始化，重複使用現有實例');
+    }
   }
   
   /// 取得 i學院服務實例
