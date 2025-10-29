@@ -83,7 +83,7 @@ class _NavigationConfigPageState extends State<NavigationConfigPage> {
               final item = availableItems[i];
               return ListTile(
                 leading: Icon(item.icon),
-                title: Text(item.label),
+                title: Text(item.getLabel(context)),
                 onTap: () {
                   setState(() {
                     _selectedItems[index] = item.id;
@@ -113,7 +113,7 @@ class _NavigationConfigPageState extends State<NavigationConfigPage> {
       // 顯示儲存成功並提示即將關閉
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('設定已儲存，App 即將關閉以套用新配置'),
+          content: Text(l10n.appWillCloseMessage),
           backgroundColor: Theme.of(context).colorScheme.primary,
           behavior: SnackBarBehavior.floating,
           duration: const Duration(seconds: 1),
@@ -171,7 +171,7 @@ class _NavigationConfigPageState extends State<NavigationConfigPage> {
               final item = availableItems[i];
               return ListTile(
                 leading: Icon(item.icon),
-                title: Text(item.label),
+                title: Text(item.getLabel(context)),
                 onTap: () {
                   setState(() {
                     _selectedItems.add(item.id);
@@ -240,18 +240,18 @@ class _NavigationConfigPageState extends State<NavigationConfigPage> {
           children: [
             Row(
               children: [
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '自訂底部導航列',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        l10n.customNavBarTitle,
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                       ),
-                      SizedBox(height: 4),
+                      const SizedBox(height: 4),
                       Text(
-                        '點擊項目更換功能，長按可拖曳排序',
-                        style: TextStyle(fontSize: 14, color: Colors.grey),
+                        l10n.customNavBarDesc,
+                        style: const TextStyle(fontSize: 14, color: Colors.grey),
                       ),
                     ],
                   ),
@@ -266,7 +266,7 @@ class _NavigationConfigPageState extends State<NavigationConfigPage> {
             ),
             const SizedBox(height: 16),
             Text(
-              '已選擇 ${_selectedItems.length}/${NavigationConfigService.maxNavItems} 個導航項目',
+              '${l10n.selectedCount} ${_selectedItems.length}/${NavigationConfigService.maxNavItems} ${l10n.hint}',
               style: const TextStyle(fontSize: 13, color: Colors.grey),
             ),
             const SizedBox(height: 16),
@@ -318,8 +318,8 @@ class _NavigationConfigPageState extends State<NavigationConfigPage> {
                         const Icon(Icons.drag_handle),
                       ],
                     ),
-                    title: Text(item.label),
-                    subtitle: Text('位置 ${index + 1}'),
+                    title: Text(item.getLabel(context)),
+                    subtitle: Text('${l10n.position} ${index + 1}'),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -328,7 +328,7 @@ class _NavigationConfigPageState extends State<NavigationConfigPage> {
                         IconButton(
                           icon: const Icon(Icons.close, size: 20),
                           onPressed: () => _removeNavItem(index),
-                          tooltip: '移除',
+                          tooltip: l10n.remove,
                         ),
                       ],
                     ),
@@ -344,7 +344,7 @@ class _NavigationConfigPageState extends State<NavigationConfigPage> {
             ListTile(
               leading: const Icon(Icons.more_horiz),
               title: Text(l10n.other),
-              subtitle: Text('位置 ${_selectedItems.length + 1}（固定）'),
+              subtitle: Text('${l10n.position} ${_selectedItems.length + 1}（${l10n.fixed}）'),
               enabled: false,
             ),
           const SizedBox(height: 24),
@@ -363,7 +363,7 @@ class _NavigationConfigPageState extends State<NavigationConfigPage> {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                  '提示',
+                  l10n.hint,
                   style: TextStyle(
                     color: Theme.of(context).colorScheme.primary,
                     fontWeight: FontWeight.bold,
@@ -374,11 +374,11 @@ class _NavigationConfigPageState extends State<NavigationConfigPage> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                '• 可自訂 1-5 個導航項目，最多 6 個（含「其他」）\n'
-                '• 預設導航列為：課表、日曆、課程查詢、成績\n'
-                '• 長按項目可拖曳調整順序\n'
-                '• 未加入導航列的功能會顯示在「其他」頁面\n'
-                '• 儲存後 App 會自動關閉，請重新開啟以套用配置',
+                '• ${l10n.navConfigHint1}\n'
+                '• ${l10n.navConfigHint2}\n'
+                '• ${l10n.navConfigHint3}\n'
+                '• ${l10n.navConfigHint4}\n'
+                '• ${l10n.navConfigHint5}',
                 style: TextStyle(
                   color: Theme.of(context).colorScheme.onSurface,
                 ),

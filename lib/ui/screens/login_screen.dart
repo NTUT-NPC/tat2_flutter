@@ -126,6 +126,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
     return Scaffold(
       body: SafeArea(
         child: Center(
@@ -137,20 +139,22 @@ class _LoginScreenState extends State<LoginScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Logo
-                  Container(
-                    height: 200,
-                    padding: const EdgeInsets.symmetric(horizontal: 40),
-                    child: Image.asset(
-                      'assets/images/logo_horizontal.png',
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
+                  // Logo - 暫時移除圖片顯示
+                  // Container(
+                  //   height: 200,
+                  //   padding: const EdgeInsets.symmetric(horizontal: 40),
+                  //   child: Image.asset(
+                  //     isDarkMode 
+                  //       ? 'assets/images/splash-dark.png'
+                  //       : 'assets/images/splash.png',
+                  //     fit: BoxFit.contain,
+                  //   ),
+                  // ),
+                  const SizedBox(height: 80),
 
                   // 標題
                   Text(
-                    'QAQ 北科生活',
+                    'TAT 北科生活',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                           fontWeight: FontWeight.bold,

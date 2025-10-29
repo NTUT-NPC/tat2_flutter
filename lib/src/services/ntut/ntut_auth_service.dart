@@ -34,8 +34,6 @@ class NtutAuthService {
         'Accept': 'application/json, text/plain, */*',
         'App-Locale': 'zh-TW',
         'App-Version': '1.2.0',
-        'Os-Version': '13',
-        'Phone-Brand': 'Google Pixel',
       },
       contentType: Headers.formUrlEncodedContentType,
       followRedirects: true,
@@ -163,10 +161,6 @@ class NtutAuthService {
       final requestBody = {
         'muid': username,
         'mpassword': encryptedPassword,
-        'forceMobile': 'app',
-        'deviceId': '0000000000000000',  // 固定的 Device ID
-        'deviceType': 'android',
-        'deviceToken': '',  // FCM Token (選填)
       };
 
       final loginResponse = await _dio.post(

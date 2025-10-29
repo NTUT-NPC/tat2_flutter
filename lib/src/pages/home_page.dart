@@ -401,7 +401,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           ...navItems.map((item) => NavigationDestination(
             icon: _buildNavIcon(item.icon, item.id, false),
             selectedIcon: _buildNavIcon(item.icon, item.id, true),
-            label: item.label,
+            label: item.getLabel(context),
           )),
           NavigationDestination(
             icon: _buildOtherIcon(),

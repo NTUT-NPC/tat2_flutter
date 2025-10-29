@@ -102,6 +102,14 @@ class AppLocalizations {
   String get noMoreFunctions => _localizedValues[locale.languageCode]?['noMoreFunctions'] ?? '沒有更多功能可以新增';
   String get minOneNavItem => _localizedValues[locale.languageCode]?['minOneNavItem'] ?? '至少需要保留一個導航項目';
   String get hint => _localizedValues[locale.languageCode]?['hint'] ?? '提示';
+  String get position => _localizedValues[locale.languageCode]?['position'] ?? '位置';
+  String get fixed => _localizedValues[locale.languageCode]?['fixed'] ?? '固定';
+  String get navConfigHint1 => _localizedValues[locale.languageCode]?['navConfigHint1'] ?? '可自訂 1-5 個導航項目，最多 6 個（含「其他」）';
+  String get navConfigHint2 => _localizedValues[locale.languageCode]?['navConfigHint2'] ?? '預設導航列為：課表、日曆、課程查詢、成績';
+  String get navConfigHint3 => _localizedValues[locale.languageCode]?['navConfigHint3'] ?? '長按項目可拖曳調整順序';
+  String get navConfigHint4 => _localizedValues[locale.languageCode]?['navConfigHint4'] ?? '未加入導航列的功能會顯示在「其他」頁面';
+  String get navConfigHint5 => _localizedValues[locale.languageCode]?['navConfigHint5'] ?? '儲存後 App 會自動關閉，請重新開啟以套用配置';
+  String get appWillCloseMessage => _localizedValues[locale.languageCode]?['appWillCloseMessage'] ?? '設定已儲存，App 即將關閉以套用新配置';
 
   // 本地化資料
   static const Map<String, Map<String, String>> _localizedValues = {
@@ -195,6 +203,14 @@ class AppLocalizations {
       'noMoreFunctions': '沒有更多功能可以新增',
       'minOneNavItem': '至少需要保留一個導航項目',
       'hint': '提示',
+      'position': '位置',
+      'fixed': '固定',
+      'navConfigHint1': '可自訂 1-5 個導航項目，最多 6 個（含「其他」）',
+      'navConfigHint2': '預設導航列為：課表、日曆、課程查詢、成績',
+      'navConfigHint3': '長按項目可拖曳調整順序',
+      'navConfigHint4': '未加入導航列的功能會顯示在「其他」頁面',
+      'navConfigHint5': '儲存後 App 會自動關閉，請重新開啟以套用配置',
+      'appWillCloseMessage': '設定已儲存，App 即將關閉以套用新配置',
     },
     'en': {
       'appName': 'QAQ NTUT Life',
@@ -286,6 +302,14 @@ class AppLocalizations {
       'noMoreFunctions': 'No more functions to add',
       'minOneNavItem': 'At least one navigation item required',
       'hint': 'Hint',
+      'position': 'Position',
+      'fixed': 'Fixed',
+      'navConfigHint1': 'Customize 1-5 navigation items, up to 6 (including "Other")',
+      'navConfigHint2': 'Default navigation: Course Table, Calendar, Course Search, Grades',
+      'navConfigHint3': 'Long press to drag and reorder items',
+      'navConfigHint4': 'Functions not in navigation bar will appear in "Other" page',
+      'navConfigHint5': 'App will restart after saving to apply configuration',
+      'appWillCloseMessage': 'Settings saved, app will restart to apply new configuration',
     },
   };
 }
