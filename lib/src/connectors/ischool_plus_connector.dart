@@ -18,11 +18,6 @@ class ISchoolPlusConnector {
   
   // 使用單一 Completer 作為互斥鎖
   Completer<void>? _lock;
-  String? _currentCourseId; // 當前正在處理的課程 ID
-  String? _lastSelectedCourseId; // 上次成功選擇的課程 ID
-  
-  // 用於調試
-  int _completedRequests = 0;
 
   ISchoolPlusConnector({required Dio dio}) : _dio = dio {
     // 不覆蓋傳入的 Dio 配置，保持共享的設置
@@ -144,21 +139,23 @@ class ISchoolPlusConnector {
   /// 
   /// 參考 TAT 實作：需要先取得課程列表，找到對應的 courseValue，然後 POST XML 到 goto_course.php
   Future<bool> _selectCourse(String courseId) async {
-    // 如果已經選擇了這門課程，跳過
-    if (_lastSelectedCourseId == courseId) {
-      debugPrint('[ISchoolPlus] [SELECT] 課程 $courseId 已選擇，跳過');
-      return true;
-    }
-    
     try {
-      debugPrint('[ISchoolPlus] [SELECT] 開始選擇課程: $courseId (上次: $_lastSelectedCourseId)');
-      
       // Step 1: 取得課程列表頁面
-      final response = await _dio.get('${_baseUrl}learn/mooc_sysbar.php');
+      final response = await _dio.get(
+        '${_baseUrl}learn/mooc_sysbar.php',
+        options: Options(
+          followRedirects: false,
+          validateStatus: (status) => status! < 500,
+        ),
+      );
+      
+      // 檢查是否被重定向（可能 session 失效）
+      if (response.statusCode == 302 || response.statusCode == 301) {
+        debugPrint('[ISchoolPlus] Session 已失效，需要重新登入');
+        return false;
+      }
       
       if (response.statusCode != 200) {
-        debugPrint('[ISchoolPlus] 無法取得課程列表 (status: ${response.statusCode})');
-        _lastSelectedCourseId = null; // 清空緩存
         return false;
       }
       
@@ -167,8 +164,7 @@ class ISchoolPlusConnector {
       final selectElement = tagNode.getElementById('selcourse');
       
       if (selectElement == null) {
-        debugPrint('[ISchoolPlus] 找不到課程選單元素');
-        _lastSelectedCourseId = null; // 清空緩存
+        debugPrint('[ISchoolPlus] 找不到課程選單元素，可能需要重新登入');
         return false;
       }
       
@@ -187,12 +183,8 @@ class ISchoolPlusConnector {
       }
       
       if (courseValue == null) {
-        debugPrint('[ISchoolPlus] 在課程列表中找不到課程: $courseId');
-        _lastSelectedCourseId = null; // 清空緩存
         return false;
       }
-      
-      debugPrint('[ISchoolPlus] [SELECT] 找到課程 value: $courseValue');
       
       // Step 3: POST XML 到 goto_course.php 來選擇課程
       final xml = '<manifest><ticket/><course_id>$courseValue</course_id><env/></manifest>';
@@ -206,91 +198,52 @@ class ISchoolPlusConnector {
       );
       
       if (gotoResponse.statusCode != 200) {
-        debugPrint('[ISchoolPlus] 選擇課程失敗 (status: ${gotoResponse.statusCode})');
-        _lastSelectedCourseId = null; // 清空緩存
         return false;
       }
-      
-      debugPrint('[ISchoolPlus] [SELECT] POST goto_course.php 成功');
       
       // 重要：選擇課程後，需要訪問課程首頁來初始化 session
       try {
-        final indexResponse = await _dio.get('${_baseUrl}learn/index.php');
-        debugPrint('[ISchoolPlus] [SELECT] 訪問課程首頁成功 (status: ${indexResponse.statusCode})');
+        await _dio.get('${_baseUrl}learn/index.php');
       } catch (e) {
-        debugPrint('[ISchoolPlus] 訪問課程首頁失敗: $e');
-        _lastSelectedCourseId = null; // 清空緩存
         return false;
       }
       
-      // 添加小延遲確保服務器端狀態更新
-      await Future.delayed(const Duration(milliseconds: 200));
       
-      // 記錄已成功選擇的課程
-      _lastSelectedCourseId = courseId;
-      
-      debugPrint('[ISchoolPlus] [SELECT] 課程選擇完成: $courseId');
       return true;
     } catch (e) {
-      debugPrint('[ISchoolPlus] 選擇課程異常: $e');
-      _lastSelectedCourseId = null; // 清空緩存
       return false;
     }
   }
 
   /// 獲取鎖
-  /// 使用簡單的互斥鎖，確保同一時間只有一個請求在執行
-  Future<void> _acquireLock(String courseId) async {
-    // 如果有鎖存在，等待它完成
+  Future<void> _acquireLock() async {
     while (_lock != null) {
-      debugPrint('[ISchoolPlus] [WAIT] 請求 $courseId 等待鎖釋放 (當前課程: $_currentCourseId)');
       try {
         await _lock!.future;
       } catch (e) {
         // 忽略錯誤，繼續嘗試
       }
     }
-
-    // 創建新鎖
     _lock = Completer<void>();
-    _currentCourseId = courseId;
-    debugPrint('[ISchoolPlus] [LOCK] 請求 $courseId 獲得鎖');
   }
 
   /// 釋放鎖
-  void _releaseLock(String courseId) {
-    if (_lock == null) {
-      debugPrint('[ISchoolPlus] [WARN] 警告：嘗試釋放不存在的鎖 (courseId: $courseId)');
-      return;
+  void _releaseLock() {
+    if (_lock != null) {
+      _lock!.complete();
+      _lock = null;
     }
-
-    if (_currentCourseId != courseId) {
-      debugPrint('[ISchoolPlus] [WARN] 警告：釋放鎖的課程ID不匹配 (預期: $_currentCourseId, 實際: $courseId)');
-    }
-
-    _completedRequests++;
-    debugPrint('[ISchoolPlus] [RELEASE] 請求 $courseId 釋放鎖 (已完成: $_completedRequests)');
-    
-    _lock!.complete();
-    _lock = null;
-    _currentCourseId = null;
   }
 
   /// 取得課程公告列表
   Future<List<ISchoolPlusAnnouncement>> getCourseAnnouncements(
       String courseId, {bool highPriority = false}) async {
-    debugPrint('[ISchoolPlus] 請求公告列表: $courseId');
-    
-    // 獲取鎖
-    await _acquireLock(courseId);
+    await _acquireLock();
     
     try {
-      debugPrint('[ISchoolPlus] 開始處理公告列表: $courseId');
-      
       // 先選擇課程
       final selectResult = await _selectCourse(courseId);
       if (!selectResult) {
-        debugPrint('[ISchoolPlus] 選擇課程失敗，返回空列表');
         return [];
       }
 
@@ -307,13 +260,11 @@ class ISchoolPlusConnector {
 
       final formSearch = tagNode.getElementById('formSearch');
       if (formSearch == null) {
-        throw Exception('找不到表單');
+        return [];
       }
 
       final selectPage = tagNode.getElementById('selectPage')?.attributes['value'] ?? '';
       final inputPerPage = tagNode.getElementById('inputPerPage')?.attributes['value'] ?? '';
-
-      // Step 2: 取得公告列表
       final inputs = formSearch.getElementsByTagName('input');
       final Map<String, String> postData = {
         'token': '',
@@ -338,21 +289,15 @@ class ISchoolPlusConnector {
         data: postData,
       );
 
-      // 解析回應
       dynamic jsonData;
       try {
         jsonData = jsonDecode(announcementsResponse.data);
       } catch (e) {
-        debugPrint('[ISchoolPlus] 課程 $courseId JSON 解析失敗');
-        throw Exception('JSON 解析失敗');
+        return [];
       }
       
       final code = jsonData['code'];
-      
-      // code = -1 表示課程沒有公告或沒有權限
       if (code != 0) {
-        debugPrint('[ISchoolPlus] 課程 $courseId 沒有公告 (code: $code)');
-        // 直接返回空列表，不是錯誤
         return [];
       }
 
@@ -360,9 +305,7 @@ class ISchoolPlusConnector {
       final data = jsonData['data'];
       final token = postData['token'];
       
-      // 檢查 data 是否為空或非 Map
       if (data == null || data is! Map) {
-        debugPrint('[ISchoolPlus] 課程 $courseId 沒有公告數據');
         return [];
       }
       
@@ -380,38 +323,24 @@ class ISchoolPlusConnector {
             'token': token,
           }));
         } catch (e) {
-          // 靜默跳過解析失敗的公告
         }
       }
 
-      debugPrint('[ISchoolPlus] 課程 $courseId 取得 ${announcements.length} 個公告');
       return announcements;
     } catch (e) {
-      debugPrint('[ISchoolPlus] 取得公告列表失敗: $e');
-      // 返回空列表而不是拋出異常，避免上層需要處理異常
       return [];
     } finally {
-      // 確保一定會釋放鎖
-      _releaseLock(courseId);
+      _releaseLock();
     }
   }
 
-  /// 取得公告詳細內容
-  /// [courseId] 課程 ID (6位數，必須提供)
   Future<ISchoolPlusAnnouncementDetail?> getAnnouncementDetail(
       ISchoolPlusAnnouncement announcement, {required String courseId, bool highPriority = false}) async {
-    debugPrint('[ISchoolPlus] 請求公告詳情: $courseId');
-    
-    // 獲取鎖
-    await _acquireLock(courseId);
+    await _acquireLock();
     
     try {
-      debugPrint('[ISchoolPlus] 開始處理公告詳情: $courseId');
-      
-      // 先選擇課程
       final selectResult = await _selectCourse(courseId);
       if (!selectResult) {
-        debugPrint('[ISchoolPlus] 選擇課程失敗: $courseId');
         return null;
       }
       
@@ -435,7 +364,6 @@ class ISchoolPlusConnector {
       final tagNode = html_parser.parse(response.data);
       final nodeInfo = tagNode.querySelector('.main.node-info');
       if (nodeInfo == null) {
-        debugPrint('[ISchoolPlus] Node info not found');
         return null;
       }
 
@@ -456,7 +384,6 @@ class ISchoolPlusConnector {
         files[fileName] = _baseUrl + href;
       }
 
-      debugPrint('[ISchoolPlus] 課程 $courseId 公告詳情取得成功');
       return ISchoolPlusAnnouncementDetail(
         title: title,
         sender: authorName,
@@ -464,30 +391,19 @@ class ISchoolPlusConnector {
         body: content,
         files: files,
       );
-    } catch (e, stackTrace) {
-      debugPrint('[ISchoolPlus] Get announcement detail error: $e');
-      debugPrint('[ISchoolPlus] StackTrace: $stackTrace');
+    } catch (e) {
       return null;
     } finally {
-      // 確保一定會釋放鎖
-      _releaseLock(courseId);
+      _releaseLock();
     }
   }
 
-  /// 取得課程檔案列表
   Future<List<ISchoolPlusCourseFile>> getCourseFiles(String courseId, {bool highPriority = false}) async {
-    debugPrint('[ISchoolPlus] 請求檔案列表: $courseId');
-    
-    // 獲取鎖
-    await _acquireLock(courseId);
+    await _acquireLock();
     
     try {
-      debugPrint('[ISchoolPlus] 開始處理檔案列表: $courseId');
-      
-      // 先選擇課程
       final selectResult = await _selectCourse(courseId);
       if (!selectResult) {
-        debugPrint('[ISchoolPlus] 選擇課程失敗');
         return [];
       }
 
@@ -495,7 +411,6 @@ class ISchoolPlusConnector {
       final launchResponse = await _dio.get('${_baseUrl}learn/path/launch.php');
       final launchHtml = launchResponse.data.toString();
       
-      // 初始化 downloadPost（即使跳過 launch.php 也需要）
       final Map<String, String> downloadPost = {
         'is_player': '',
         'href': '',
@@ -508,20 +423,14 @@ class ISchoolPlusConnector {
         'read_key': '',
       };
       
-      // 檢查是否返回了 HTML 錯誤頁面（可能是課程沒有教材）
-      if (launchHtml.contains('<!DOCTYPE html>') && launchHtml.contains('<html')) {
-        debugPrint('[ISchoolPlus] launch.php 返回了 HTML 頁面，嘗試直接訪問 SCORM XML');
-      } else {
-        // 正常解析 cid
+      if (!(launchHtml.contains('<!DOCTYPE html>') && launchHtml.contains('<html'))) {
         final cidRegex = RegExp(r'cid=([\w|-]+,)');
         final cidMatch = cidRegex.firstMatch(launchHtml);
         if (cidMatch == null) {
-          debugPrint('[ISchoolPlus] 無法從 launch.php 解析 cid');
           return [];
         }
         final cid = cidMatch.group(1);
 
-        // Step 2: 取得 path tree
         final pathTreeResponse = await _dio.get(
           '${_baseUrl}learn/path/pathtree.php',
           queryParameters: {'cid': cid},
@@ -602,13 +511,10 @@ class ISchoolPlusConnector {
 
       debugPrint('[ISchoolPlus] 課程 $courseId 取得 ${courseFiles.length} 個檔案');
       return courseFiles;
-    } catch (e, stackTrace) {
-      debugPrint('[ISchoolPlus] 取得課程檔案錯誤: $e');
-      debugPrint('[ISchoolPlus] StackTrace: $stackTrace');
+    } catch (e) {
       return [];
     } finally {
-      // 確保一定會釋放鎖
-      _releaseLock(courseId);
+      _releaseLock();
     }
   }
 
