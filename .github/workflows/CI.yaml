@@ -128,13 +128,14 @@ jobs:
         if: env.SHOULD_SIGN_IOS == 'true'
         uses: apple-actions/import-codesign-certs@v3
         with:
-          # Corrected the parameter name from 'p12-base64'
           p12-file-base64: ${{ secrets.IOS_BUILD_CERTIFICATE_BASE64 }}
           p12-password: ${{ secrets.IOS_P12_PASSWORD }}
 
       - name: Build iOS IPA (Signed)
         if: env.SHOULD_SIGN_IOS == 'true'
-        run: flutter build ipa --release
+        env:
+          IOS_APPLE_TEAM_ID: ${{ secrets.IOS_APPLE_TEAM_ID }}
+        run: flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
 
       - name: Build iOS IPA (Unsigned)
         if: env.SHOULD_SIGN_IOS == 'false'
