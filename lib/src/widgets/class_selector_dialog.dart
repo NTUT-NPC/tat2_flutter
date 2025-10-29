@@ -351,28 +351,41 @@ class _ProgramSelectorState extends State<_ProgramSelector> {
   @override
   void initState() {
     super.initState();
+    debugPrint('[ClassSelector] _ProgramSelector initState 被調用');
     _loadPrograms();
   }
 
   Future<void> _loadPrograms() async {
+    debugPrint('[ClassSelector] _loadPrograms 開始執行');
     setState(() => _isLoading = true);
     
     try {
       final api = context.read<NtutApiService>();
+      debugPrint('[ClassSelector] 準備調用 api.getPrograms');
+      
       final structure = await api.getPrograms(
         year: widget.year,
         semester: widget.semester,
       );
       
-      debugPrint('[ClassSelector] 載入學程結構');
+      debugPrint('[ClassSelector] 載入學程結構完成');
+      debugPrint('[ClassSelector] structure = $structure');
+      debugPrint('[ClassSelector] structure type = ${structure?.runtimeType}');
+      
+      if (structure != null) {
+        debugPrint('[ClassSelector] structure keys = ${structure.keys}');
+        debugPrint('[ClassSelector] structure[programs] = ${structure['programs']}');
+      }
       
       if (structure != null && structure['programs'] != null) {
+        final programs = structure['programs'] as List;
         setState(() {
-          _programs = structure['programs'] as List;
+          _programs = programs;
           _isLoading = false;
         });
         debugPrint('[ClassSelector] 載入 ${_programs.length} 個微學程');
       } else {
+        debugPrint('[ClassSelector] structure 為空或沒有 programs 鍵');
         setState(() => _isLoading = false);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -385,8 +398,9 @@ class _ProgramSelectorState extends State<_ProgramSelector> {
           );
         }
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('[ClassSelector] 載入微學程失敗: $e');
+      debugPrint('[ClassSelector] Stack trace: $stackTrace');
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
