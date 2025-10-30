@@ -78,15 +78,40 @@ jobs:
           echo "storePassword=${{ secrets.ANDROID_SIGNING_STORE_PASSWORD }}" >> android/key.properties
           echo "keyAlias=${{ secrets.ANDROID_SIGNING_KEY_ALIAS }}" >> android/key.properties
           echo "keyPassword=${{ secrets.ANDROID_SIGNING_KEY_PASSWORD }}" >> android/key.properties
-          
+
+      - name: Build Android Appbundle
+        if: env.SHOULD_SIGN_ANDROID == 'true'
+        run: flutter build appbundle --release
+
+      - name: Deploy to Closed Beta
+        if: env.SHOULD_SIGN_ANDROID == 'true'
+        uses: r0adkll/upload-google-play@v1
+        with:
+            serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_API_KEY_JSON }}
+            packageName: org.ntut.npc.tat2
+            releaseFiles: build/app/outputs/bundle/release/app-release.aab
+            track: internal
+
       - name: Build Android APK
-        run: flutter build apk --release
+        run: flutter build apk --debug
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: release-apk-${{ env.BUILD_TIMESTAMP }}
-          path: build/app/outputs/flutter-apk/app-release.apk
+          path: build/app/outputs/flutter-apk/app-debug.apk
+
+      - name: Create Pre-release and Upload Assets
+        uses: softprops/action-gh-release@v1
+        with:
+            tag_name: "pre-release-${{ github.sha }}"
+            name: "Pre-release ${{ github.sha }}"
+            body: "Automated pre-release for commit ${{ github.sha }}"
+            prerelease: true
+            files: |
+              build/app/outputs/flutter-apk/debug.apk
+        env:
+            GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
 
   build-ios:
     name: Build Flutter (iOS)
@@ -139,7 +164,7 @@ jobs:
 
       - name: Build iOS IPA (Unsigned)
         if: env.SHOULD_SIGN_IOS == 'false'
-        run: flutter build ipa --release --no-codesign
+        run: flutter build ipa --debug --no-codesign
 
       - name: Upload IPA Artifact
         if: env.SHOULD_SIGN_IOS == 'true'
