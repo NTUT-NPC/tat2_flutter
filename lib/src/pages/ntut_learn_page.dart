@@ -142,6 +142,7 @@ class _NtutLearnPageState extends State<NtutLearnPage> {
 
   /// 顯示清除快取對話框
   void _showClearCacheDialog() async {
+    final l10n = AppLocalizations.of(context);
     final cacheService = ISchoolPlusCacheService();
     
     // 計算大小
@@ -154,31 +155,31 @@ class _NtutLearnPageState extends State<NtutLearnPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('清除 i學院 資料'),
+        title: Text(l10n.clearISchoolData),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('這將會清除：'),
+            Text(l10n.thisWillClear),
             const SizedBox(height: 8),
-            Text('• 公告快取：${ISchoolPlusCacheService.formatSize(cacheSize)}'),
-            Text('• 下載檔案：${ISchoolPlusCacheService.formatSize(downloadSize)}'),
+            Text('• ${l10n.announcementCache(ISchoolPlusCacheService.formatSize(cacheSize))}'),
+            Text('• ${l10n.downloadFiles(ISchoolPlusCacheService.formatSize(downloadSize))}'),
             const SizedBox(height: 8),
             Text(
-              '總計：${ISchoolPlusCacheService.formatSize(totalSize)}',
+              l10n.total(ISchoolPlusCacheService.formatSize(totalSize)),
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            const Text(
-              '此操作無法復原',
-              style: TextStyle(color: Colors.red, fontSize: 12),
+            Text(
+              l10n.cannotUndo,
+              style: const TextStyle(color: Colors.red, fontSize: 12),
             ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
+            child: Text(l10n.cancel),
           ),
           TextButton(
             onPressed: () async {
@@ -186,7 +187,7 @@ class _NtutLearnPageState extends State<NtutLearnPage> {
               await _clearAllData();
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('清除'),
+            child: Text(l10n.clear),
           ),
         ],
       ),
@@ -195,6 +196,7 @@ class _NtutLearnPageState extends State<NtutLearnPage> {
 
   /// 清除所有資料
   Future<void> _clearAllData() async {
+    final l10n = AppLocalizations.of(context);
     try {
       final cacheService = ISchoolPlusCacheService();
       
@@ -203,16 +205,16 @@ class _NtutLearnPageState extends State<NtutLearnPage> {
         showDialog(
           context: context,
           barrierDismissible: false,
-          builder: (context) => const Center(
+          builder: (context) => Center(
             child: Card(
               child: Padding(
-                padding: EdgeInsets.all(16),
+                padding: const EdgeInsets.all(16),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 16),
-                    Text('清除中...'),
+                    const CircularProgressIndicator(),
+                    const SizedBox(height: 16),
+                    Text(l10n.clearing),
                   ],
                 ),
               ),
@@ -234,7 +236,7 @@ class _NtutLearnPageState extends State<NtutLearnPage> {
         
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('已清除所有 i學院 資料'),
+            content: Text(l10n.allISchoolDataCleared),
             backgroundColor: Theme.of(context).colorScheme.primary,
             behavior: SnackBarBehavior.floating,
             duration: const Duration(seconds: 2),
@@ -247,7 +249,7 @@ class _NtutLearnPageState extends State<NtutLearnPage> {
         
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('清除失敗：$e'),
+            content: Text(l10n.clearFailedWithError(e.toString())),
             backgroundColor: Colors.red,
           ),
         );
@@ -257,6 +259,7 @@ class _NtutLearnPageState extends State<NtutLearnPage> {
 
   /// 清除所有紅點
   Future<void> _clearAllBadges() async {
+    final l10n = AppLocalizations.of(context);
     try {
       await BadgeService().clearAllISchoolBadges();
       
@@ -264,7 +267,7 @@ class _NtutLearnPageState extends State<NtutLearnPage> {
         setState(() {}); // 重新整理以更新紅點顯示
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('已清除所有 i學院 紅點'),
+            content: Text(l10n.allISchoolBadgesCleared),
             backgroundColor: Theme.of(context).colorScheme.primary,
             behavior: SnackBarBehavior.floating,
             duration: const Duration(seconds: 2),
@@ -275,27 +278,7 @@ class _NtutLearnPageState extends State<NtutLearnPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('清除紅點失敗：$e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
-  /// 恢復所有紅點（將所有公告標記為未讀）
-  Future<void> _resetAllBadges() async {
-    try {
-      await BadgeService().resetAllISchoolBadges();
-      
-      if (mounted) {
-        setState(() {}); // 重新整理以更新紅點顯示
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('標記失敗：$e'),
+            content: Text(l10n.clearBadgesFailedWithError(e.toString())),
             backgroundColor: Colors.red,
           ),
         );
@@ -332,23 +315,16 @@ class _NtutLearnPageState extends State<NtutLearnPage> {
                   case 'clear_badges':
                     await _clearAllBadges();
                     break;
-                  case 'reset_badges':
-                    await _resetAllBadges();
-                    break;
                 }
               },
               itemBuilder: (context) => [
-                const PopupMenuItem(
+                PopupMenuItem(
                   value: 'clear_cache',
-                  child: Text('清除快取與檔案'),
+                  child: Text(l10n.clearCacheAndFiles),
                 ),
-                const PopupMenuItem(
+                PopupMenuItem(
                   value: 'clear_badges',
-                  child: Text('標記全部已讀'),
-                ),
-                const PopupMenuItem(
-                  value: 'reset_badges',
-                  child: Text('標記全部未讀'),
+                  child: Text(l10n.markAllAsRead),
                 ),
               ],
             ),
@@ -363,9 +339,10 @@ class _NtutLearnPageState extends State<NtutLearnPage> {
   }
 
   Widget _buildLoginPrompt() {
+    final l10n = AppLocalizations.of(context);
     return LoginRequiredView(
-      featureName: 'i學園',
-      description: '訪客模式無法使用 i學園\n這是在線功能，需要登入後才能查看課程公告、下載教材',
+      featureName: l10n.ntutLearn,
+      description: l10n.iSchoolLoginDesc,
       onLoginTap: () async {
         final result = await Navigator.of(context).pushNamed('/login');
         if (result == true && mounted) {
@@ -376,14 +353,15 @@ class _NtutLearnPageState extends State<NtutLearnPage> {
   }
 
   Widget _buildCourseList() {
+    final l10n = AppLocalizations.of(context);
     if (_isLoadingCourses) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('載入課程中...'),
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            Text(l10n.loadingCourses),
           ],
         ),
       );
@@ -396,12 +374,12 @@ class _NtutLearnPageState extends State<NtutLearnPage> {
           children: [
             Icon(Icons.inbox, size: 80, color: Colors.grey.withOpacity(0.5)),
             const SizedBox(height: 16),
-            const Text('沒有找到課程'),
+            Text(l10n.noCoursesFound),
             const SizedBox(height: 8),
             TextButton.icon(
               onPressed: _loadCourses,
               icon: const Icon(Icons.refresh),
-              label: const Text('重新載入'),
+              label: Text(l10n.reloadCourses),
             ),
           ],
         ),
@@ -462,7 +440,7 @@ class _NtutLearnPageState extends State<NtutLearnPage> {
                 courseName,
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
-              subtitle: Text('課號：$courseId'),
+              subtitle: Text('${AppLocalizations.of(context).courseId}：$courseId'),
               children: [
                 _buildAnnouncementTile(courseId, courseName),
                 _buildMaterialTile(courseId, courseName),
@@ -476,6 +454,7 @@ class _NtutLearnPageState extends State<NtutLearnPage> {
 
   /// 建立公告列表項
   Widget _buildAnnouncementTile(String courseId, String courseName) {
+    final l10n = AppLocalizations.of(context);
     return FutureBuilder<bool>(
       future: BadgeService().hasCourseUnreadAnnouncements(courseId),
       builder: (context, snapshot) {
@@ -500,7 +479,7 @@ class _NtutLearnPageState extends State<NtutLearnPage> {
                 ),
             ],
           ),
-          title: const Text('課程公告'),
+          title: Text(l10n.courseAnnouncements),
           trailing: const Icon(Icons.chevron_right),
           onTap: () {
             Navigator.push(
@@ -523,9 +502,10 @@ class _NtutLearnPageState extends State<NtutLearnPage> {
 
   /// 建立教材列表項
   Widget _buildMaterialTile(String courseId, String courseName) {
+    final l10n = AppLocalizations.of(context);
     return ListTile(
       leading: const Icon(Icons.folder, color: Colors.green),
-      title: const Text('課程教材'),
+      title: Text(l10n.courseMaterials),
       trailing: const Icon(Icons.chevron_right),
       onTap: () {
         Navigator.push(

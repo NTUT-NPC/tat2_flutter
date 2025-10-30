@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/badge_service.dart';
+import '../l10n/app_localizations.dart';
 
 /// 通知設定頁面
 class NotificationSettingsPage extends StatefulWidget {
@@ -33,9 +34,11 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    
     return Scaffold(
       appBar: AppBar(
-        title: const Text('通知設定'),
+        title: Text(l10n.notificationSettings),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -45,7 +48,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                 Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Text(
-                    '紅點通知',
+                    l10n.badgeNotification,
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -56,8 +59,8 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                 
                 SwitchListTile(
                   secondary: const Icon(Icons.notifications_off),
-                  title: const Text('隱藏所有紅點'),
-                  subtitle: const Text('隱藏 App 中的所有紅點通知'),
+                  title: Text(l10n.hideAllBadges),
+                  subtitle: Text(l10n.hideAllBadgesDesc),
                   value: _hideAllBadges,
                   onChanged: (value) async {
                     await BadgeService().setHideAllBadges(value);
@@ -68,7 +71,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text(value ? '已隱藏所有紅點' : '已顯示所有紅點'),
+                          content: Text(value ? l10n.hiddenAllBadges : l10n.showAllBadges),
                           duration: const Duration(seconds: 1),
                         ),
                       );
@@ -81,7 +84,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                 Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Text(
-                    '北科i學園',
+                    l10n.ntutLearn,
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -92,8 +95,8 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                 
                 SwitchListTile(
                   secondary: const Icon(Icons.sync),
-                  title: const Text('自動檢查公告'),
-                  subtitle: const Text('登入時自動檢查新公告'),
+                  title: Text(l10n.autoCheckAnnouncements),
+                  subtitle: Text(l10n.autoCheckAnnouncementsDesc),
                   value: _autoCheckISchool,
                   onChanged: (value) async {
                     await BadgeService().setAutoCheckISchool(value);
@@ -104,7 +107,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text(value ? '已啟用自動檢查' : '已關閉自動檢查'),
+                          content: Text(value ? l10n.autoCheckEnabled : l10n.autoCheckDisabled),
                           duration: const Duration(seconds: 1),
                         ),
                       );

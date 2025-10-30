@@ -144,8 +144,8 @@ class _OtherFeaturesPageState extends State<OtherFeaturesPage> {
           // 通知設定
           ListTile(
             leading: const Icon(Icons.notifications),
-            title: const Text('通知設定'),
-            subtitle: const Text('管理紅點通知與自動檢查'),
+            title: Text(l10n.notificationSettings),
+            subtitle: Text(l10n.manageNotificationSettings),
             trailing: const Icon(Icons.chevron_right),
             onTap: () {
               Navigator.push(
@@ -251,11 +251,11 @@ class _OtherFeaturesPageState extends State<OtherFeaturesPage> {
           const Divider(),
 
           // 帳號管理區域
-          const Padding(
-            padding: EdgeInsets.all(16.0),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
             child: Text(
-              '帳號',
-              style: TextStyle(
+              l10n.account,
+              style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: Colors.grey,
@@ -279,6 +279,7 @@ class _OtherFeaturesPageState extends State<OtherFeaturesPage> {
   }
 
   Future<void> _handleFeedback(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
     try {
       // 使用 url_launcher 直接開啟外部瀏覽器
       final uri = Uri.parse('https://forms.gle/2gGYEXuRufgYZMeQ7');
@@ -288,7 +289,7 @@ class _OtherFeaturesPageState extends State<OtherFeaturesPage> {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('無法開啟反饋頁面'),
+              content: Text(l10n.cannotOpenFeedback),
               backgroundColor: Theme.of(context).colorScheme.primary,
               behavior: SnackBarBehavior.floating,
               duration: const Duration(seconds: 2),
@@ -299,7 +300,7 @@ class _OtherFeaturesPageState extends State<OtherFeaturesPage> {
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('無法開啟反饋頁面: $e')),
+          SnackBar(content: Text(l10n.cannotOpenFeedbackWithError(e.toString()))),
         );
       }
     }
@@ -311,7 +312,7 @@ class _OtherFeaturesPageState extends State<OtherFeaturesPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text(l10n.relogin),
-        content: const Text('使用儲存的帳號密碼重新登入'),
+        content: Text(l10n.reloginUsingSaved),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -330,13 +331,13 @@ class _OtherFeaturesPageState extends State<OtherFeaturesPage> {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (context) => const AlertDialog(
+        builder: (context) => AlertDialog(
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 16),
-              Text('重新登入中...'),
+              const CircularProgressIndicator(),
+              const SizedBox(height: 16),
+              Text(l10n.reloggingIn),
             ],
           ),
         ),
@@ -354,7 +355,7 @@ class _OtherFeaturesPageState extends State<OtherFeaturesPage> {
           if (result == true) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: const Text('重新登入成功'),
+                content: Text(l10n.reloginSuccess),
                 backgroundColor: Theme.of(context).colorScheme.primary,
                 behavior: SnackBarBehavior.floating,
                 duration: const Duration(seconds: 2),
@@ -363,7 +364,7 @@ class _OtherFeaturesPageState extends State<OtherFeaturesPage> {
           } else if (result == false) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: const Text('重新登入失敗，請檢查網路連線或帳號密碼'),
+                content: Text(l10n.reloginFailed),
                 backgroundColor: Theme.of(context).colorScheme.primary,
                 behavior: SnackBarBehavior.floating,
                 duration: const Duration(seconds: 2),
@@ -372,12 +373,12 @@ class _OtherFeaturesPageState extends State<OtherFeaturesPage> {
           } else {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: const Text('沒有保存的帳號密碼，請前往登入'),
+                content: Text(l10n.noSavedCredentials),
                 backgroundColor: Theme.of(context).colorScheme.primary,
                 behavior: SnackBarBehavior.floating,
                 duration: const Duration(seconds: 2),
                 action: SnackBarAction(
-                  label: '登入',
+                  label: l10n.login,
                   textColor: Colors.white,
                   onPressed: () {
                     Navigator.of(context).pushNamed('/login');

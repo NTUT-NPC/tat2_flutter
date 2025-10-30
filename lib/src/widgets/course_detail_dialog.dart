@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/ntut_api_service.dart';
+import '../l10n/app_localizations.dart';
 
 /// 課程詳細資訊 Bottom Sheet
 class CourseDetailDialog extends StatefulWidget {
@@ -65,6 +66,7 @@ class _CourseDetailDialogState extends State<CourseDetailDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final course = widget.course;
     // 解析課程資料
     final name = course['name'] is Map 
@@ -95,12 +97,12 @@ class _CourseDetailDialogState extends State<CourseDetailDialog> {
     final Map<String, List<String>> timeData = {};
     if (course['time'] is Map) {
       final timeMap = course['time'] as Map;
-      const dayNames = {
-        'mon': '星期一',
-        'tue': '星期二',
-        'wed': '星期三',
-        'thu': '星期四',
-        'fri': '星期五',
+      final dayNames = {
+        'mon': l10n.monday,
+        'tue': l10n.tuesday,
+        'wed': l10n.wednesday,
+        'thu': l10n.thursday,
+        'fri': l10n.friday,
       };
       dayNames.forEach((eng, chi) {
         final periods = timeMap[eng];
@@ -193,7 +195,7 @@ class _CourseDetailDialogState extends State<CourseDetailDialog> {
                     IconButton(
                       icon: const Icon(Icons.close),
                       onPressed: () => Navigator.of(context).pop(),
-                      tooltip: '關閉',
+                      tooltip: l10n.close,
                     ),
                   ],
                 ),
@@ -211,19 +213,19 @@ class _CourseDetailDialogState extends State<CourseDetailDialog> {
                   _buildInfoCard(
                     context,
                     icon: Icons.info_outline,
-                    title: '基本資訊',
+                    title: l10n.basicInfo,
                     children: [
-                      _buildInfoRow('課號', courseId),
-                      _buildInfoRow('學分', credit),
-                      _buildInfoRow('時數', hours),
+                      _buildInfoRow(l10n.courseId, courseId),
+                      _buildInfoRow(l10n.credit, credit),
+                      _buildInfoRow(l10n.hours, hours),
                       if (courseType.isNotEmpty)
-                        _buildInfoRow('課程標準', courseType),
+                        _buildInfoRow(l10n.courseStandard, courseType),
                       if (people.isNotEmpty)
-                        _buildInfoRow('人數', people),
+                        _buildInfoRow(l10n.people, people),
                       if (int.tryParse(peopleWithdraw) != null && int.parse(peopleWithdraw) > 0)
-                        _buildInfoRow('退選', peopleWithdraw),
+                        _buildInfoRow(l10n.withdraw, peopleWithdraw),
                       if (language.isNotEmpty)
-                        _buildInfoRow('授課語言', language),
+                        _buildInfoRow(l10n.teachingLanguage, language),
                     ],
                   ),
                   
@@ -234,7 +236,7 @@ class _CourseDetailDialogState extends State<CourseDetailDialog> {
                     _buildInfoCard(
                       context,
                       icon: Icons.person,
-                      title: '授課教師',
+                      title: l10n.teachers,
                       children: [
                         _buildChipList(teachers),
                       ],
@@ -247,7 +249,7 @@ class _CourseDetailDialogState extends State<CourseDetailDialog> {
                     _buildInfoCard(
                       context,
                       icon: Icons.groups,
-                      title: '開課班級',
+                      title: l10n.classes,
                       children: [
                         _buildChipList(classes),
                       ],
@@ -260,7 +262,7 @@ class _CourseDetailDialogState extends State<CourseDetailDialog> {
                     _buildInfoCard(
                       context,
                       icon: Icons.schedule,
-                      title: '上課時間與地點',
+                      title: l10n.timeAndLocation,
                       children: [
                         if (timeData.isNotEmpty)
                           ...timeData.entries.map((entry) {
@@ -335,7 +337,7 @@ class _CourseDetailDialogState extends State<CourseDetailDialog> {
                     _buildInfoCard(
                       context,
                       icon: Icons.description,
-                      title: '課程概述',
+                      title: l10n.courseDescription,
                       children: [
                         Text(
                           description,
@@ -353,7 +355,7 @@ class _CourseDetailDialogState extends State<CourseDetailDialog> {
                   _buildInfoCard(
                     context,
                     icon: Icons.assignment,
-                    title: '評分規則',
+                    title: l10n.evaluationRules,
                     children: [
                       if (_isLoadingDetails)
                         Center(
@@ -371,7 +373,7 @@ class _CourseDetailDialogState extends State<CourseDetailDialog> {
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  '載入中...',
+                                  l10n.loading,
                                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                                   ),
@@ -384,7 +386,7 @@ class _CourseDetailDialogState extends State<CourseDetailDialog> {
                         ..._courseDetails!.asMap().entries.map((entry) {
                           final index = entry.key;
                           final detail = entry.value;
-                          final teacherName = detail['name'] ?? '未知教師';
+                          final teacherName = detail['name'] ?? l10n.unknownTeacher;
                           final scorePolicy = detail['scorePolicy'] ?? '';
                           
                           return Container(
@@ -429,7 +431,7 @@ class _CourseDetailDialogState extends State<CourseDetailDialog> {
                                 Text(
                                   scorePolicy.isNotEmpty 
                                       ? scorePolicy 
-                                      : '此教師未提供評分規則',
+                                      : l10n.noScorePolicy,
                                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                     height: 1.6,
                                     color: scorePolicy.isEmpty 
@@ -459,7 +461,7 @@ class _CourseDetailDialogState extends State<CourseDetailDialog> {
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Text(
-                                  '此課程目前無課程大綱資訊',
+                                  l10n.noCourseOutline,
                                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                                     fontStyle: FontStyle.italic,
@@ -479,7 +481,7 @@ class _CourseDetailDialogState extends State<CourseDetailDialog> {
                     _buildInfoCard(
                       context,
                       icon: Icons.note,
-                      title: '備註',
+                      title: l10n.notes,
                       children: [
                         Text(
                           notes,

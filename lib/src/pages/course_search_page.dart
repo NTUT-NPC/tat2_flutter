@@ -35,7 +35,7 @@ class _CourseSearchPageState extends State<CourseSearchPage> {
   
   // 博雅類別
   final Set<String> _selectedCategories = {};
-  final Map<String, String> _categoryList = {
+  Map<String, String> get _categoryList => {
     '創新與創業': '創新與創業',
     '人文與藝術': '人文與藝術',
     '社會與法治': '社會與法治',
@@ -44,7 +44,7 @@ class _CourseSearchPageState extends State<CourseSearchPage> {
   
   // 學院篩選
   String? _selectedCollege;
-  final List<String> _collegeList = [
+  List<String> get _collegeList => [
     '校院級',
     '機電學院',
     '工程學院',
@@ -149,7 +149,7 @@ class _CourseSearchPageState extends State<CourseSearchPage> {
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('載入失敗：$e')),
+          SnackBar(content: Text(AppLocalizations.of(context).loadFailedWithMsg(e.toString()))),
         );
       }
     }
@@ -206,7 +206,7 @@ class _CourseSearchPageState extends State<CourseSearchPage> {
                     ),
                     const SizedBox(width: 12),
                     Text(
-                      '博雅類別',
+                      AppLocalizations.of(context).categoryFilter,
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
@@ -276,7 +276,7 @@ class _CourseSearchPageState extends State<CourseSearchPage> {
                     ),
                     const SizedBox(width: 12),
                     Text(
-                      '時間篩選',
+                      AppLocalizations.of(context).timeFilter,
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
@@ -345,7 +345,7 @@ class _CourseSearchPageState extends State<CourseSearchPage> {
                     ),
                     const SizedBox(width: 12),
                     Text(
-                      '學院篩選',
+                      AppLocalizations.of(context).collegeFilter,
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
@@ -412,7 +412,7 @@ class _CourseSearchPageState extends State<CourseSearchPage> {
             _hasSearched = true; // 標記已執行搜尋
           });
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('已載入 $title 的課程 (${courses.length} 筆)')),
+            SnackBar(content: Text(AppLocalizations.of(context).loadedClassCourses(title, courses.length))),
           );
         },
       ),
@@ -433,7 +433,7 @@ class _CourseSearchPageState extends State<CourseSearchPage> {
           if (hasActiveFilters)
             IconButton(
               icon: const Icon(Icons.filter_list_off),
-              tooltip: '清除篩選',
+              tooltip: l10n.clearFilters,
               onPressed: _resetFilters,
             ),
         ],
@@ -463,7 +463,7 @@ class _CourseSearchPageState extends State<CourseSearchPage> {
         if (_isFABExpanded) ...[
           _buildMiniFAB(
             icon: Icons.class_,
-            label: '班級查詢',
+            label: AppLocalizations.of(context).classQuery,
             onPressed: () {
               setState(() => _isFABExpanded = false);
               _showClassSelector();
@@ -473,7 +473,9 @@ class _CourseSearchPageState extends State<CourseSearchPage> {
           const SizedBox(height: 12),
           _buildMiniFAB(
             icon: Icons.category,
-            label: categoryCount > 0 ? '博雅類別 ($categoryCount)' : '博雅類別',
+            label: categoryCount > 0 
+                ? '${AppLocalizations.of(context).categoryFilter} ($categoryCount)' 
+                : AppLocalizations.of(context).categoryFilter,
             onPressed: () {
               setState(() => _isFABExpanded = false);
               _showCategoryFilter();
@@ -483,7 +485,9 @@ class _CourseSearchPageState extends State<CourseSearchPage> {
           const SizedBox(height: 12),
           _buildMiniFAB(
             icon: Icons.access_time,
-            label: timeCount > 0 ? '時間篩選 ($timeCount)' : '時間篩選',
+            label: timeCount > 0 
+                ? '${AppLocalizations.of(context).timeFilter} ($timeCount)' 
+                : AppLocalizations.of(context).timeFilter,
             onPressed: () {
               setState(() => _isFABExpanded = false);
               _showTimeFilter();
@@ -493,7 +497,9 @@ class _CourseSearchPageState extends State<CourseSearchPage> {
           const SizedBox(height: 12),
           _buildMiniFAB(
             icon: Icons.business,
-            label: hasCollege ? '學院篩選 (1)' : '學院篩選',
+            label: hasCollege 
+                ? '${AppLocalizations.of(context).collegeFilter} (1)' 
+                : AppLocalizations.of(context).collegeFilter,
             onPressed: () {
               setState(() => _isFABExpanded = false);
               _showCollegeFilter();
@@ -552,11 +558,12 @@ class _CourseSearchPageState extends State<CourseSearchPage> {
   }
 
   Widget _buildSearchBar() {
+    final l10n = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.all(16),
       child: SearchBar(
         controller: _searchController,
-        hintText: '課程名稱、教師、課號',
+        hintText: l10n.courseSearchPlaceholder,
         leading: const Padding(
           padding: EdgeInsets.only(left: 8),
           child: Icon(Icons.search),
@@ -587,6 +594,7 @@ class _CourseSearchPageState extends State<CourseSearchPage> {
   }
 
   Widget _buildTimeFilterContent() {
+    final l10n = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -598,17 +606,17 @@ class _CourseSearchPageState extends State<CourseSearchPage> {
           children: [
             ActionChip(
               avatar: const Icon(Icons.select_all, size: 18),
-              label: const Text('全選'),
+              label: Text(l10n.selectAll),
               onPressed: _selectAllTimes,
             ),
             ActionChip(
               avatar: const Icon(Icons.clear, size: 18),
-              label: const Text('清除'),
+              label: Text(l10n.clear),
               onPressed: _clearAllTimes,
             ),
             ActionChip(
               avatar: const Icon(Icons.event_busy, size: 18),
-              label: const Text('不選衝堂'),
+              label: Text(l10n.deselectConflicts),
               onPressed: _deselectConflictTimes,
             ),
           ],
@@ -751,7 +759,7 @@ class _CourseSearchPageState extends State<CourseSearchPage> {
     if (_userCourses == null || _userCourses!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('沒有找到用戶課表'),
+          content: Text(AppLocalizations.of(context).noUserCourseTable),
           backgroundColor: Theme.of(context).colorScheme.primary,
           behavior: SnackBarBehavior.floating,
           duration: const Duration(seconds: 2),
@@ -806,17 +814,18 @@ class _CourseSearchPageState extends State<CourseSearchPage> {
     _timeFilterModalState?.call(() {});
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('已取消選取 $removedCount 個衝堂時段')),
+      SnackBar(content: Text(AppLocalizations.of(context).deselectedConflicts(removedCount))),
     );
   }
 
   Widget _buildCategoryFilterContent() {
+    final l10n = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          '選擇一個或多個博雅類別',
+          l10n.selectOneOrMoreCategories,
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
@@ -854,12 +863,13 @@ class _CourseSearchPageState extends State<CourseSearchPage> {
   }
 
   Widget _buildCollegeFilterContent() {
+    final l10n = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          '選擇一個學院',
+          l10n.selectOneCollege,
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
@@ -893,6 +903,7 @@ class _CourseSearchPageState extends State<CourseSearchPage> {
   }
 
   List<Widget> _buildResultsSlivers() {
+    final l10n = AppLocalizations.of(context);
     if (_isLoading) {
       return [
         SliverFillRemaining(
@@ -904,7 +915,7 @@ class _CourseSearchPageState extends State<CourseSearchPage> {
                 const CircularProgressIndicator(),
                 const SizedBox(height: 16),
                 Text(
-                  '搜尋中...',
+                  l10n.searching,
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
@@ -934,14 +945,14 @@ class _CourseSearchPageState extends State<CourseSearchPage> {
                   ),
                   const SizedBox(height: 24),
                   Text(
-                    '開始搜尋課程',
+                    l10n.startSearching,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    '輸入關鍵字或點擊右下角按鈕\n設定篩選條件或選擇班級',
+                    l10n.searchHint,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
@@ -973,14 +984,14 @@ class _CourseSearchPageState extends State<CourseSearchPage> {
                   ),
                   const SizedBox(height: 24),
                   Text(
-                    '沒有找到符合的課程',
+                    l10n.noMatchingCourses,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    '試試調整搜尋條件或篩選器',
+                    l10n.tryAdjustingFilters,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
@@ -1017,7 +1028,7 @@ class _CourseSearchPageState extends State<CourseSearchPage> {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    '找到 ${_filteredCourses.length} 筆課程',
+                    l10n.coursesFound(_filteredCourses.length),
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                           color: Theme.of(context).colorScheme.onSecondaryContainer,
                           fontWeight: FontWeight.w600,
@@ -1125,9 +1136,9 @@ class _CourseSearchPageState extends State<CourseSearchPage> {
                           children: [
                             _buildInfoChip(Icons.numbers, courseId),
                             if (credit.isNotEmpty)
-                              _buildInfoChip(Icons.school, '$credit 學分'),
+                              _buildInfoChip(Icons.school, l10n.creditValue(credit)),
                             if (hours.isNotEmpty)
-                              _buildInfoChip(Icons.schedule, '$hours 小時'),
+                              _buildInfoChip(Icons.schedule, l10n.hourValue(hours)),
                           ],
                         ),
                         if (teachers.isNotEmpty) ...[
@@ -1170,6 +1181,7 @@ class _CourseSearchPageState extends State<CourseSearchPage> {
   }
 
   Widget _buildPaginationBar() {
+    final l10n = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
       margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
@@ -1179,13 +1191,13 @@ class _CourseSearchPageState extends State<CourseSearchPage> {
           IconButton.filledTonal(
             icon: const Icon(Icons.first_page),
             onPressed: _currentPage > 1 ? () => _goToPage(1) : null,
-            tooltip: '第一頁',
+            tooltip: l10n.firstPage,
           ),
           const SizedBox(width: 8),
           IconButton.filledTonal(
             icon: const Icon(Icons.chevron_left),
             onPressed: _currentPage > 1 ? () => _goToPage(_currentPage - 1) : null,
-            tooltip: '上一頁',
+            tooltip: l10n.previousPage,
           ),
           const SizedBox(width: 16),
           Container(
@@ -1206,13 +1218,13 @@ class _CourseSearchPageState extends State<CourseSearchPage> {
           IconButton.filledTonal(
             icon: const Icon(Icons.chevron_right),
             onPressed: _currentPage < _totalPages ? () => _goToPage(_currentPage + 1) : null,
-            tooltip: '下一頁',
+            tooltip: l10n.nextPage,
           ),
           const SizedBox(width: 8),
           IconButton.filledTonal(
             icon: const Icon(Icons.last_page),
             onPressed: _currentPage < _totalPages ? () => _goToPage(_totalPages) : null,
-            tooltip: '最後一頁',
+            tooltip: l10n.lastPage,
           ),
         ],
       ),

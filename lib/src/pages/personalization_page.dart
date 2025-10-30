@@ -40,6 +40,8 @@ class _PersonalizationPageState extends State<PersonalizationPage> {
 
   /// 顯示個人化功能介紹彈窗
   void _showIntroDialog() {
+    final l10n = AppLocalizations.of(context);
+    
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -49,15 +51,15 @@ class _PersonalizationPageState extends State<PersonalizationPage> {
           size: 48,
           color: Theme.of(context).colorScheme.primary,
         ),
-        title: const Text('歡迎來到個人化設定'),
+        title: Text(l10n.welcomeToPersonalization),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                '這裡可以自訂 App 的外觀與體驗：',
-                style: TextStyle(
+              Text(
+                l10n.personalizationIntro,
+                style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 15,
                 ),
@@ -65,32 +67,32 @@ class _PersonalizationPageState extends State<PersonalizationPage> {
               const SizedBox(height: 16),
               _buildIntroPoint(
                 Icons.color_lens,
-                '主題顏色',
-                '選擇你喜歡的主題色調',
+                l10n.themeColorOption,
+                l10n.themeColorDesc,
               ),
               const SizedBox(height: 12),
               _buildIntroPoint(
                 Icons.brightness_6,
-                '深淺模式',
-                '切換亮色或暗色主題',
+                l10n.themeModeOption,
+                l10n.themeModeDesc,
               ),
               const SizedBox(height: 12),
               _buildIntroPoint(
                 Icons.language,
-                '語言設定',
-                '支援繁體中文和英文',
+                l10n.languageOption,
+                l10n.languageDesc,
               ),
               const SizedBox(height: 12),
               _buildIntroPoint(
                 Icons.grid_view,
-                '課表風格',
-                '選擇喜歡的課表顯示方式',
+                l10n.courseTableStyleOption,
+                l10n.courseTableStyleDesc,
               ),
               const SizedBox(height: 12),
               _buildIntroPoint(
                 Icons.palette_outlined,
-                '課程配色',
-                '自訂課表的配色方案',
+                l10n.courseColorStyleOption,
+                l10n.courseColorStyleDesc,
               ),
               const SizedBox(height: 16),
               Container(
@@ -108,7 +110,7 @@ class _PersonalizationPageState extends State<PersonalizationPage> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        '長按課表中的課程可以自訂顏色喔！',
+                        l10n.longPressCourseTip,
                         style: TextStyle(
                           color: Theme.of(context).colorScheme.onPrimaryContainer,
                           fontWeight: FontWeight.w500,
@@ -125,7 +127,7 @@ class _PersonalizationPageState extends State<PersonalizationPage> {
         actions: [
           FilledButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('開始探索'),
+            child: Text(l10n.startExploring),
           ),
         ],
       ),
@@ -195,8 +197,8 @@ class _PersonalizationPageState extends State<PersonalizationPage> {
                 children: [
                   ListTile(
                     leading: const Icon(Icons.palette),
-                    title: const Text('主題顏色'),
-                    subtitle: Text(_getColorName(themeService.themeColorId)),
+                    title: Text(l10n.courseColor),
+                    subtitle: Text(_getColorName(themeService.themeColorId, context)),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => _showThemeColorDialog(context, themeService),
                   ),
@@ -204,7 +206,7 @@ class _PersonalizationPageState extends State<PersonalizationPage> {
                   ListTile(
                     leading: Icon(themeService.themeModeIcon),
                     title: Text(l10n.themeMode),
-                    subtitle: Text(themeService.themeModeString),
+                    subtitle: Text(_getThemeModeString(themeService.themeMode, context)),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => _showThemeModeDialog(context, themeService),
                   ),
@@ -212,7 +214,7 @@ class _PersonalizationPageState extends State<PersonalizationPage> {
                   ListTile(
                     leading: Icon(themeService.localeIcon),
                     title: Text(l10n.language),
-                    subtitle: Text(themeService.localeString),
+                    subtitle: Text(_getLocaleString(themeService.locale, context)),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => _showLanguageDialog(context, themeService),
                   ),
@@ -238,8 +240,8 @@ class _PersonalizationPageState extends State<PersonalizationPage> {
             builder: (context, themeService, child) {
               return ListTile(
                 leading: Icon(themeService.courseTableStyleIcon),
-                title: const Text('課表風格'),
-                subtitle: Text(themeService.courseTableStyleName),
+                title: Text(l10n.courseTableStyle),
+                subtitle: Text(_getCourseTableStyleName(themeService.courseTableStyle, context)),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => _showCourseTableStyleDialog(context, themeService),
               );
@@ -250,8 +252,8 @@ class _PersonalizationPageState extends State<PersonalizationPage> {
             builder: (context, themeService, child) {
               return ListTile(
                 leading: Icon(themeService.courseColorStyleIcon),
-                title: const Text('課程配色'),
-                subtitle: Text(themeService.courseColorStyleName),
+                title: Text(l10n.courseColorStyle),
+                subtitle: Text(_getCourseColorStyleName(themeService.courseColorStyle, context)),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => _showCourseColorStyleDialog(context, themeService),
               );
@@ -260,16 +262,16 @@ class _PersonalizationPageState extends State<PersonalizationPage> {
           const Divider(),
           ListTile(
             leading: const Icon(Icons.info_outline),
-            title: const Text('課程顏色說明'),
-            subtitle: const Text('訂製屬於你自己的課表'),
+            title: Text(l10n.courseColorInfo),
+            subtitle: Text(l10n.customYourCourseTable),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _showCourseColorInfoDialog(context),
           ),
           const Divider(),
           ListTile(
             leading: const Icon(Icons.shuffle),
-            title: const Text('重新隨機分配顏色'),
-            subtitle: const Text('清除所有自訂顏色，重新自動分配'),
+            title: Text(l10n.reassignColors),
+            subtitle: Text(l10n.reassignColorsDesc),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _showReassignColorsDialog(context),
           ),
@@ -278,15 +280,38 @@ class _PersonalizationPageState extends State<PersonalizationPage> {
     );
   }
 
-  String _getColorName(String colorId) {
-    return AppTheme.themeColors[colorId]?.name ?? '藍色';
+  String _getColorName(String colorId, BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    switch (colorId) {
+      case 'blue':
+        return l10n.colorBlue;
+      case 'purple':
+        return l10n.colorPurple;
+      case 'green':
+        return l10n.colorGreen;
+      case 'orange':
+        return l10n.colorOrange;
+      case 'red':
+        return l10n.colorRed;
+      case 'pink':
+        return l10n.colorPink;
+      case 'teal':
+        return l10n.colorTeal;
+      case 'indigo':
+        return l10n.colorIndigo;
+      case 'yellow':
+        return l10n.colorYellow;
+      default:
+        return l10n.colorBlue;
+    }
   }
 
   void _showThemeColorDialog(BuildContext context, ThemeSettingsService themeService) {
+    final l10n = AppLocalizations.of(context);
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('選擇主題顏色'),
+        title: Text(l10n.courseColor),
         content: SingleChildScrollView(
           child: Wrap(
             spacing: 16,
@@ -342,7 +367,7 @@ class _PersonalizationPageState extends State<PersonalizationPage> {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        themeColor.name,
+                        _getColorName(colorId, context),
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
@@ -359,7 +384,7 @@ class _PersonalizationPageState extends State<PersonalizationPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('關閉'),
+            child: Text(l10n.close),
           ),
         ],
       ),
@@ -418,16 +443,18 @@ class _PersonalizationPageState extends State<PersonalizationPage> {
   }
   
   void _showCourseTableStyleDialog(BuildContext context, ThemeSettingsService themeService) {
+    final l10n = AppLocalizations.of(context);
+    
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('選擇課表風格'),
+        title: Text(l10n.selectCourseTableStyle),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             RadioListTile<CourseTableStyle>(
-              title: const Text('Material 3 風格'),
-              subtitle: const Text('懸浮卡片設計，現代化視覺'),
+              title: Text(l10n.material3Style),
+              subtitle: Text(l10n.material3StyleDesc),
               secondary: const Icon(Icons.layers),
               value: CourseTableStyle.material3,
               groupValue: themeService.courseTableStyle,
@@ -437,7 +464,7 @@ class _PersonalizationPageState extends State<PersonalizationPage> {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: const Text('已切換至 Material 3 風格課表'),
+                      content: Text(l10n.switchedToMaterial3),
                       backgroundColor: Theme.of(context).colorScheme.primary,
                       behavior: SnackBarBehavior.floating,
                       duration: const Duration(seconds: 2),
@@ -447,8 +474,8 @@ class _PersonalizationPageState extends State<PersonalizationPage> {
               },
             ),
             RadioListTile<CourseTableStyle>(
-              title: const Text('經典風格'),
-              subtitle: const Text('表格式佈局，緊湊簡潔'),
+              title: Text(l10n.classicStyle),
+              subtitle: Text(l10n.classicStyleDesc),
               secondary: const Icon(Icons.grid_on),
               value: CourseTableStyle.classic,
               groupValue: themeService.courseTableStyle,
@@ -458,7 +485,7 @@ class _PersonalizationPageState extends State<PersonalizationPage> {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: const Text('已切換至經典風格課表'),
+                      content: Text(l10n.switchedToClassic),
                       backgroundColor: Theme.of(context).colorScheme.primary,
                       behavior: SnackBarBehavior.floating,
                       duration: const Duration(seconds: 2),
@@ -468,8 +495,8 @@ class _PersonalizationPageState extends State<PersonalizationPage> {
               },
             ),
             RadioListTile<CourseTableStyle>(
-              title: const Text('TAT 傳統風格'),
-              subtitle: const Text('緊湊表格，馬卡龍色系'),
+              title: Text(l10n.tatStyle),
+              subtitle: Text(l10n.tatStyleDesc),
               secondary: const Icon(Icons.table_chart),
               value: CourseTableStyle.tat,
               groupValue: themeService.courseTableStyle,
@@ -479,7 +506,7 @@ class _PersonalizationPageState extends State<PersonalizationPage> {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: const Text('已切換至 TAT 傳統風格課表'),
+                      content: Text(l10n.switchedToTat),
                       backgroundColor: Theme.of(context).colorScheme.primary,
                       behavior: SnackBarBehavior.floating,
                       duration: const Duration(seconds: 2),
@@ -495,16 +522,18 @@ class _PersonalizationPageState extends State<PersonalizationPage> {
   }
   
   void _showCourseColorStyleDialog(BuildContext context, ThemeSettingsService themeService) {
+    final l10n = AppLocalizations.of(context);
+    
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('選擇課程配色'),
+        title: Text(l10n.selectCourseColorStyle),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             RadioListTile<CourseColorStyle>(
-              title: const Text('TAT 配色'),
-              subtitle: const Text('柔和的馬卡龍色系'),
+              title: Text(l10n.tatColorStyle),
+              subtitle: Text(l10n.tatColorStyleDesc),
               secondary: const Icon(Icons.palette_outlined),
               value: CourseColorStyle.tat,
               groupValue: themeService.courseColorStyle,
@@ -514,7 +543,7 @@ class _PersonalizationPageState extends State<PersonalizationPage> {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: const Text('已切換至 TAT 配色'),
+                      content: Text(l10n.switchedToTatColor),
                       backgroundColor: Theme.of(context).colorScheme.primary,
                       behavior: SnackBarBehavior.floating,
                       duration: const Duration(seconds: 2),
@@ -524,8 +553,8 @@ class _PersonalizationPageState extends State<PersonalizationPage> {
               },
             ),
             RadioListTile<CourseColorStyle>(
-              title: const Text('主題配色'),
-              subtitle: const Text('根據主題色生成'),
+              title: Text(l10n.themeColorStyle),
+              subtitle: Text(l10n.themeColorStyleDesc),
               secondary: const Icon(Icons.color_lens),
               value: CourseColorStyle.theme,
               groupValue: themeService.courseColorStyle,
@@ -535,7 +564,7 @@ class _PersonalizationPageState extends State<PersonalizationPage> {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: const Text('已切換至主題配色'),
+                      content: Text(l10n.switchedToThemeColor),
                       backgroundColor: Theme.of(context).colorScheme.primary,
                       behavior: SnackBarBehavior.floating,
                       duration: const Duration(seconds: 2),
@@ -545,8 +574,8 @@ class _PersonalizationPageState extends State<PersonalizationPage> {
               },
             ),
             RadioListTile<CourseColorStyle>(
-              title: const Text('彩虹配色'),
-              subtitle: const Text('經典彩虹色系'),
+              title: Text(l10n.rainbowColorStyle),
+              subtitle: Text(l10n.rainbowColorStyleDesc),
               secondary: const Icon(Icons.gradient),
               value: CourseColorStyle.rainbow,
               groupValue: themeService.courseColorStyle,
@@ -556,7 +585,7 @@ class _PersonalizationPageState extends State<PersonalizationPage> {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: const Text('已切換至彩虹配色'),
+                      content: Text(l10n.switchedToRainbowColor),
                       backgroundColor: Theme.of(context).colorScheme.primary,
                       behavior: SnackBarBehavior.floating,
                       duration: const Duration(seconds: 2),
@@ -623,6 +652,7 @@ class _PersonalizationPageState extends State<PersonalizationPage> {
   }
   
   void _showCourseColorInfoDialog(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final themeService = Provider.of<ThemeSettingsService>(context, listen: false);
     final colorStyle = themeService.courseColorStyle;
     
@@ -633,30 +663,30 @@ class _PersonalizationPageState extends State<PersonalizationPage> {
     
     switch (colorStyle) {
       case CourseColorStyle.tat:
-        title = 'TAT 馬卡龍配色';
-        description = '柔和的粉彩色系，提供 13 種精選顏色：';
+        title = l10n.tatMacaronColor;
+        description = l10n.tatMacaronColorDesc;
         features = [
-          '柔和的馬卡龍色調',
-          '保護眼睛的淺色系',
-          '高辨識度的色彩搭配',
+          l10n.softMacaronTone,
+          l10n.eyeFriendlyLightColor,
+          l10n.highRecognitionColor,
         ];
         break;
       case CourseColorStyle.theme:
-        title = '主題動態配色';
-        description = '根據您的主題色生成 16 種和諧配色：';
+        title = l10n.themeDynamicColor;
+        description = l10n.themeDynamicColorDesc;
         features = [
-          '與主題色完美融合',
-          '冷暖色調漸變搭配',
-          '自動適配亮暗模式',
+          l10n.blendWithTheme,
+          l10n.warmColdGradient,
+          l10n.autoAdaptMode,
         ];
         break;
       case CourseColorStyle.rainbow:
-        title = '彩虹色系配色';
-        description = '經典的彩虹色譜，提供 16 種鮮明顏色：';
+        title = l10n.rainbowColor;
+        description = l10n.rainbowColorDesc;
         features = [
-          '色相均勻分布',
-          '最大化辨識度',
-          '獨立於主題色',
+          l10n.evenHueDistribution,
+          l10n.maxRecognition,
+          l10n.independentOfTheme,
         ];
         break;
     }
@@ -703,7 +733,7 @@ class _PersonalizationPageState extends State<PersonalizationPage> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        '長按課表中的任一課程\n即可自訂專屬顏色',
+                        l10n.longPressToCustomColor,
                         style: TextStyle(
                           color: Theme.of(context).colorScheme.onPrimaryContainer,
                           fontWeight: FontWeight.w500,
@@ -719,7 +749,7 @@ class _PersonalizationPageState extends State<PersonalizationPage> {
         actions: [
           FilledButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('我知道了'),
+            child: Text(l10n.gotIt),
           ),
         ],
       ),
@@ -744,6 +774,7 @@ class _PersonalizationPageState extends State<PersonalizationPage> {
   }
   
   void _showReassignColorsDialog(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final themeService = Provider.of<ThemeSettingsService>(context, listen: false);
     final colorStyle = themeService.courseColorStyle;
     
@@ -751,13 +782,13 @@ class _PersonalizationPageState extends State<PersonalizationPage> {
     String colorSystemName;
     switch (colorStyle) {
       case CourseColorStyle.tat:
-        colorSystemName = 'TAT 馬卡龍色系';
+        colorSystemName = l10n.tatMacaronColorSystem;
         break;
       case CourseColorStyle.theme:
-        colorSystemName = '主題漸變色系';
+        colorSystemName = l10n.themeGradientColorSystem;
         break;
       case CourseColorStyle.rainbow:
-        colorSystemName = '彩虹色系';
+        colorSystemName = l10n.rainbowColorSystem;
         break;
     }
     
@@ -769,20 +800,20 @@ class _PersonalizationPageState extends State<PersonalizationPage> {
           size: 48,
           color: Theme.of(context).colorScheme.primary,
         ),
-        title: const Text('重新隨機分配顏色'),
+        title: Text(l10n.reassignColorsConfirm),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                '此操作將：',
-                style: TextStyle(fontWeight: FontWeight.bold),
+              Text(
+                l10n.thisWillDo,
+                style: const TextStyle(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
-              _buildInfoPoint('•', '清除所有自訂顏色'),
-              _buildInfoPoint('•', '重新自動分配課程顏色'),
-              _buildInfoPoint('•', '使用 $colorSystemName'),
+              _buildInfoPoint('•', l10n.clearAllCustomColors),
+              _buildInfoPoint('•', l10n.reassignCourseColors),
+              _buildInfoPoint('•', l10n.useColorSystem(colorSystemName)),
               const SizedBox(height: 16),
               Container(
                 padding: const EdgeInsets.all(12),
@@ -799,7 +830,7 @@ class _PersonalizationPageState extends State<PersonalizationPage> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        '此操作無法復原',
+                        l10n.cannotUndo,
                         style: TextStyle(
                           color: Theme.of(context).colorScheme.onErrorContainer,
                           fontWeight: FontWeight.w500,
@@ -815,7 +846,7 @@ class _PersonalizationPageState extends State<PersonalizationPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
+            child: Text(l10n.cancel),
           ),
           FilledButton(
             onPressed: () async {
@@ -850,7 +881,7 @@ class _PersonalizationPageState extends State<PersonalizationPage> {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('已使用 $colorSystemName 重新分配課程顏色'),
+                    content: Text(l10n.reassignedWithSystem(colorSystemName)),
                     backgroundColor: Theme.of(context).colorScheme.primary,
                     behavior: SnackBarBehavior.floating,
                     duration: const Duration(seconds: 2),
@@ -858,10 +889,58 @@ class _PersonalizationPageState extends State<PersonalizationPage> {
                 );
               }
             },
-            child: const Text('確定'),
+            child: Text(l10n.confirm),
           ),
         ],
       ),
     );
+  }
+
+  /// 獲取主題模式的國際化字串
+  String _getThemeModeString(ThemeMode mode, BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    switch (mode) {
+      case ThemeMode.light:
+        return l10n.lightMode;
+      case ThemeMode.dark:
+        return l10n.darkMode;
+      default:
+        return l10n.followSystem;
+    }
+  }
+
+  /// 獲取語言設定的國際化字串
+  String _getLocaleString(Locale? locale, BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    if (locale == null) return l10n.followSystem;
+    if (locale.languageCode == 'zh') return l10n.traditionalChinese;
+    if (locale.languageCode == 'en') return 'English';
+    return l10n.followSystem;
+  }
+
+  /// 獲取課表風格的國際化字串
+  String _getCourseTableStyleName(CourseTableStyle style, BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    switch (style) {
+      case CourseTableStyle.material3:
+        return l10n.material3Style;
+      case CourseTableStyle.classic:
+        return l10n.classicStyle;
+      case CourseTableStyle.tat:
+        return l10n.tatStyle;
+    }
+  }
+
+  /// 獲取課程配色風格的國際化字串
+  String _getCourseColorStyleName(CourseColorStyle style, BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    switch (style) {
+      case CourseColorStyle.tat:
+        return l10n.tatColorStyle;
+      case CourseColorStyle.theme:
+        return l10n.themeColorStyle;
+      case CourseColorStyle.rainbow:
+        return l10n.rainbowColorStyle;
+    }
   }
 }

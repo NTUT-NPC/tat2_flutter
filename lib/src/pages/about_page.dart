@@ -26,10 +26,13 @@ class _AboutPageState extends State<AboutPage> {
   bool _isLoadingSpecialThanks = true;
 
   // Repositories to feature in the "Special Thanks" section
-  final Map<String, String> _specialThanksRepos = {
-    'NEO-TAT/tat_flutter': '北科課表 APP 核心技術參考',
-    'gnehs/ntut-course-web': '北科課程爬蟲與網頁版參考',
-  };
+  Map<String, String> _getSpecialThanksRepos(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return {
+      'NEO-TAT/tat_flutter': l10n.coreFeatureReference,
+      'gnehs/ntut-course-web': l10n.webCrawlerReference,
+    };
+  }
 
   @override
   void initState() {
@@ -50,7 +53,8 @@ class _AboutPageState extends State<AboutPage> {
         'https://api.github.com/repos/NTUT-NPC/tat2_flutter/contributors');
 
     // Fetch contributors for all "Special Thanks" repositories concurrently
-    final specialThanksFutures = _specialThanksRepos.keys
+    final specialThanksRepos = _getSpecialThanksRepos(context);
+    final specialThanksFutures = specialThanksRepos.keys
         .map((slug) => _fetchContributors(
             'https://api.github.com/repos/$slug/contributors',
             repoSlug: slug))
@@ -168,7 +172,7 @@ class _AboutPageState extends State<AboutPage> {
             const SizedBox(height: 24),
 
             // 作者資訊
-            _buildSectionTitle('貢獻者', theme),
+            _buildSectionTitle(l10n.contributors, theme),
             if (_isLoadingContributors)
               const Center(child: CircularProgressIndicator())
             else
@@ -184,7 +188,7 @@ class _AboutPageState extends State<AboutPage> {
             const SizedBox(height: 24),
 
             // Special Thanks Section
-            _buildSectionTitle('元老級貢獻者', theme),
+            _buildSectionTitle(l10n.seniorContributors, theme),
             if (_isLoadingSpecialThanks)
               const Center(child: CircularProgressIndicator())
             else
@@ -200,8 +204,8 @@ class _AboutPageState extends State<AboutPage> {
             const SizedBox(height: 24),
 
             // 特別感謝
-            _buildSectionTitle('特別感謝', theme),
-            ..._specialThanksRepos.entries.map((entry) {
+            _buildSectionTitle(l10n.specialThanks, theme),
+            ..._getSpecialThanksRepos(context).entries.map((entry) {
               return _buildClickableCard(
                 icon: Icons.favorite,
                 title: entry.key,
@@ -213,11 +217,11 @@ class _AboutPageState extends State<AboutPage> {
             const SizedBox(height: 24),
 
             // 法律資訊
-            _buildSectionTitle('法律資訊', theme),
+            _buildSectionTitle(l10n.legalInformation, theme),
             _buildClickableCard(
               icon: Icons.privacy_tip,
-              title: '隱私權條款',
-              subtitle: '了解我們如何保護您的隱私',
+              title: l10n.privacyPolicyTitle,
+              subtitle: l10n.privacyPolicyDesc,
               onTap: () {
                 Navigator.push(
                   context,
@@ -229,8 +233,8 @@ class _AboutPageState extends State<AboutPage> {
             ),
             _buildClickableCard(
               icon: Icons.description,
-              title: '使用者條款',
-              subtitle: '使用服務前請詳閱本條款',
+              title: l10n.termsOfServiceTitle,
+              subtitle: l10n.termsOfServiceDesc,
               onTap: () {
                 Navigator.push(
                   context,
@@ -244,11 +248,11 @@ class _AboutPageState extends State<AboutPage> {
             const SizedBox(height: 24),
 
             // 開源資訊
-            _buildSectionTitle('開源專案', theme),
+            _buildSectionTitle(l10n.openSourceProject, theme),
             _buildClickableCard(
               icon: Icons.code,
               title: 'NTUT-NPC/tat2_flutter',
-              subtitle: 'TAT 2 原始碼',
+              subtitle: l10n.tatSourceCode,
               onTap: () =>
                   _launchUrl('https://github.com/NTUT-NPC/tat2_flutter'),
             ),
@@ -260,7 +264,7 @@ class _AboutPageState extends State<AboutPage> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Text(
                 '© ${DateTime.now().year} TAT\n'
-                '僅供學習交流使用',
+                '${l10n.forEducationalUseOnly}',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 12,

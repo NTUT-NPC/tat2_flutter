@@ -55,7 +55,7 @@ class _GradesPageState extends State<GradesPage> with TickerProviderStateMixin {
         
         if (!loginSuccess) {
           setState(() {
-            _errorMessage = '需要登入';
+            _errorMessage = 'needLogin';
             _isLoading = false;
           });
           // 不彈出對話框，直接顯示 LoginRequiredView
@@ -74,7 +74,7 @@ class _GradesPageState extends State<GradesPage> with TickerProviderStateMixin {
       
       if (credentials == null) {
         setState(() {
-          _errorMessage = '需要登入';
+          _errorMessage = 'needLogin';
           _isLoading = false;
         });
         // 不彈出對話框，直接顯示 LoginRequiredView
@@ -85,7 +85,7 @@ class _GradesPageState extends State<GradesPage> with TickerProviderStateMixin {
       
       if (studentId == null || studentId.isEmpty) {
         setState(() {
-          _errorMessage = '無法取得學號';
+          _errorMessage = 'cannotGetStudentId';
           _isLoading = false;
         });
         return;
@@ -99,7 +99,7 @@ class _GradesPageState extends State<GradesPage> with TickerProviderStateMixin {
 
       if (grades.isEmpty) {
         setState(() {
-          _errorMessage = '沒有成績資料';
+          _errorMessage = 'noGradeData';
           _isLoading = false;
         });
         return;
@@ -128,7 +128,7 @@ class _GradesPageState extends State<GradesPage> with TickerProviderStateMixin {
       });
     } catch (e) {
       setState(() {
-        _errorMessage = '載入成績失敗: $e';
+        _errorMessage = 'loadGradesFailed:$e';
         _isLoading = false;
       });
     }
@@ -162,8 +162,8 @@ class _GradesPageState extends State<GradesPage> with TickerProviderStateMixin {
           title: Text(l10n.grades),
         ),
         body: LoginRequiredView(
-          featureName: '成績',
-          description: '訪客模式無法查看成績\n登入後可查看並緩存成績資料',
+          featureName: l10n.gradesFeatureName,
+          description: l10n.gradesLoginDesc,
           onLoginTap: () async {
             final result = await Navigator.of(context).pushNamed('/login');
             if (result == true && mounted) {
@@ -186,11 +186,11 @@ class _GradesPageState extends State<GradesPage> with TickerProviderStateMixin {
             children: [
               Icon(Icons.inbox, size: 64, color: colorScheme.onSurfaceVariant),
               const SizedBox(height: 16),
-              const Text('沒有成績資料'),
+              Text(l10n.noGradeData),
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: () => _loadGrades(forceRefresh: true),
-                child: const Text('重新載入'),
+                child: Text(l10n.reload),
               ),
             ],
           ),
@@ -205,7 +205,7 @@ class _GradesPageState extends State<GradesPage> with TickerProviderStateMixin {
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () => _loadGrades(forceRefresh: true),
-            tooltip: '重新載入',
+            tooltip: l10n.reload,
           ),
         ],
         bottom: TabBar(
@@ -225,7 +225,7 @@ class _GradesPageState extends State<GradesPage> with TickerProviderStateMixin {
           labelStyle: const TextStyle(fontWeight: FontWeight.bold),
           unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.normal),
           tabs: [
-            const Tab(text: '整體統計'),
+            Tab(text: l10n.overallStats),
             ..._gradesBySemester.keys.map((semester) => Tab(text: semester)),
           ],
         ),
@@ -277,7 +277,7 @@ class _GradesPageState extends State<GradesPage> with TickerProviderStateMixin {
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Text(
-                  '各學期成績',
+                  AppLocalizations.of(context).semesterGradesList,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
@@ -285,11 +285,16 @@ class _GradesPageState extends State<GradesPage> with TickerProviderStateMixin {
               ),
               ..._gradesBySemester.entries.map((entry) {
                 final stats = _gradesService.getSemesterStats(entry.value);
+                final l10n = AppLocalizations.of(context);
                 return ListTile(
                   leading: const Icon(Icons.calendar_today),
                   title: Text(entry.key),
                   subtitle: Text(
-                    '平均: ${stats.averageScoreString} | 學分: ${stats.earnedCreditsString}/${stats.totalCreditsString}',
+                    l10n.semesterSummary(
+                      stats.averageScoreString,
+                      stats.earnedCreditsString,
+                      stats.totalCreditsString,
+                    ),
                   ),
                   trailing: const Icon(
                     Icons.arrow_forward_ios,

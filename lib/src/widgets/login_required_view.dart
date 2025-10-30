@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 
 /// 需要登入的提示視圖
 /// 
@@ -17,6 +18,8 @@ class LoginRequiredView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32.0),
@@ -30,14 +33,14 @@ class LoginRequiredView extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             Text(
-              '訪客模式',
+              l10n.guestMode,
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
             ),
             const SizedBox(height: 12),
             Text(
-              description ?? '$featureName需要登入後才能使用',
+              description ?? l10n.featureRequiresLogin(featureName),
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -47,7 +50,7 @@ class LoginRequiredView extends StatelessWidget {
             FilledButton.icon(
               onPressed: onLoginTap,
               icon: const Icon(Icons.login),
-              label: const Text('登入'),
+              label: Text(l10n.login),
               style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 32,
@@ -79,23 +82,26 @@ class GuestModeWithCacheView extends StatelessWidget {
     this.onRefreshTap,
   });
 
-  String _formatCacheTime(DateTime cacheTime) {
+  String _formatCacheTime(DateTime cacheTime, BuildContext context) {
     final now = DateTime.now();
     final diff = now.difference(cacheTime);
+    final l10n = AppLocalizations.of(context);
 
     if (diff.inMinutes < 1) {
-      return '剛剛更新';
+      return l10n.justUpdated;
     } else if (diff.inMinutes < 60) {
-      return '${diff.inMinutes} 分鐘前更新';
+      return '${diff.inMinutes} ${l10n.minutesAgo}${l10n.updated}';
     } else if (diff.inHours < 24) {
-      return '${diff.inHours} 小時前更新';
+      return '${diff.inHours} ${l10n.hoursAgo}${l10n.updated}';
     } else {
-      return '${diff.inDays} 天前更新';
+      return '${diff.inDays} ${l10n.daysAgo}${l10n.updated}';
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    
     return Column(
       children: [
         // 訪客模式橫幅
@@ -117,7 +123,7 @@ class GuestModeWithCacheView extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      '訪客模式',
+                      l10n.guestMode,
                       style: TextStyle(
                         color: Theme.of(context).colorScheme.onSurface,
                         fontSize: 13,
@@ -127,7 +133,7 @@ class GuestModeWithCacheView extends StatelessWidget {
                     if (cacheTime != null) ...[
                       const SizedBox(height: 2),
                       Text(
-                        '緩存資料 · ${_formatCacheTime(cacheTime!)}',
+                        '${l10n.cachedData} · ${_formatCacheTime(cacheTime!, context)}',
                         style: TextStyle(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                           fontSize: 11,
@@ -150,7 +156,7 @@ class GuestModeWithCacheView extends StatelessWidget {
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
-                  child: const Text('登入更新', style: TextStyle(fontSize: 13)),
+                  child: Text(l10n.loginToUpdate, style: const TextStyle(fontSize: 13)),
                 ),
               ],
             ],

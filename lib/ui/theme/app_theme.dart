@@ -3,41 +3,42 @@ import 'package:flutter/material.dart';
 /// QAQ 應用主題配置 - Material You 動態配色
 class AppTheme {
   /// 預設主題色種子顏色（高飽和度）
+  /// Note: name 欄位僅作為預設值，實際顯示應從 AppLocalizations 獲取
   static const Map<String, ThemeColor> themeColors = {
     'blue': ThemeColor(
-      name: '藍色',
+      name: 'Blue',
       seedColor: Color(0xFF2196F3),
     ),
     'purple': ThemeColor(
-      name: '紫色',
+      name: 'Purple',
       seedColor: Color(0xFF9C27B0),
     ),
     'green': ThemeColor(
-      name: '綠色',
+      name: 'Green',
       seedColor: Color(0xFF4CAF50),
     ),
     'orange': ThemeColor(
-      name: '橙色',
+      name: 'Orange',
       seedColor: Color(0xFFFF9800),
     ),
     'red': ThemeColor(
-      name: '紅色',
+      name: 'Red',
       seedColor: Color(0xFFFF0000),
     ),
     'pink': ThemeColor(
-      name: '粉紅',
+      name: 'Pink',
       seedColor: Color(0xFFFF69B4),
     ),
     'teal': ThemeColor(
-      name: '青綠',
+      name: 'Teal',
       seedColor: Color(0xFF009688),
     ),
     'indigo': ThemeColor(
-      name: '靛藍',
+      name: 'Indigo',
       seedColor: Color(0xFF3F51B5),
     ),
     'yellow': ThemeColor(
-      name: '黃色',
+      name: 'Yellow',
       seedColor: Color(0xFFFFEB3B),
     ),
   };

@@ -48,7 +48,10 @@ class _AdminSystemPageState extends State<AdminSystemPage> {
         _apTree = APTreeJson.fromJson(result);
         debugPrint('[AdminSystemPage] 成功載入 ${_apTree!.apList.length} 個項目');
       } else {
-        _errorMessage = '無法載入校務系統';
+        if (mounted) {
+          final l10n = AppLocalizations.of(context);
+          _errorMessage = l10n.cannotLoadAdminSystem;
+        }
       }
     } catch (e, stackTrace) {
       debugPrint('[AdminSystemPage] 載入失敗: $e');
@@ -167,9 +170,11 @@ class _AdminSystemPageState extends State<AdminSystemPage> {
 
   /// 建立系統列表
   Widget _buildTree() {
+    final l10n = AppLocalizations.of(context);
+    
     if (_apTree == null || _apTree!.apList.isEmpty) {
-      return const Center(
-        child: Text('沒有可用的系統'),
+      return Center(
+        child: Text(l10n.noAvailableSystems),
       );
     }
 
@@ -188,13 +193,15 @@ class _AdminSystemPageState extends State<AdminSystemPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.apDn == null ? l10n.adminSystem : '校務系統'),
+        title: Text(l10n.adminSystem),
       ),
       body: _buildBody(),
     );
   }
 
   Widget _buildBody() {
+    final l10n = AppLocalizations.of(context);
+    
     if (_isLoading) {
       return const Center(
         child: CircularProgressIndicator(),
@@ -203,7 +210,7 @@ class _AdminSystemPageState extends State<AdminSystemPage> {
 
     if (_errorMessage != null) {
       return LoginRequiredView(
-        featureName: '校務系統',
+        featureName: l10n.adminSystem,
         description: '訪客模式無法使用校務系統\n這是在線功能，需要登入後才能使用',
         onLoginTap: () async {
           final result = await Navigator.of(context).pushNamed('/login');

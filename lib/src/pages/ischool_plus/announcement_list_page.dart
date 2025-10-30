@@ -11,6 +11,7 @@ import '../../services/ischool_plus_cache_service.dart';
 import '../../services/badge_service.dart';
 import '../../services/file_download_service.dart';
 import '../../services/file_store.dart';
+import '../../l10n/app_localizations.dart';
 
 /// 課程公告列表頁面
 class AnnouncementListPage extends StatefulWidget {
@@ -65,10 +66,12 @@ class _AnnouncementListPageState extends State<AnnouncementListPage> {
       if (!service.isLoggedIn) {
         final loginSuccess = await service.login();
         if (!loginSuccess) {
-          setState(() {
-            _errorMessage = '登入 i學院失敗，請稍後再試';
-            _isLoading = false;
-          });
+          if (mounted) {
+            setState(() {
+              _errorMessage = AppLocalizations.of(context).loginISchoolFailed;
+              _isLoading = false;
+            });
+          }
           return;
         }
       }
@@ -93,15 +96,17 @@ class _AnnouncementListPageState extends State<AnnouncementListPage> {
         _isLoading = false;
       });
     } catch (e) {
-      setState(() {
-        // 更友好的錯誤提示
-        if (e.toString().contains('API error')) {
-          _errorMessage = '此課程目前沒有公告';
-        } else {
-          _errorMessage = '載入公告失敗，請稍後再試';
-        }
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          // 更友好的錯誤提示
+          if (e.toString().contains('API error')) {
+            _errorMessage = AppLocalizations.of(context).noCourseAnnouncements;
+          } else {
+            _errorMessage = AppLocalizations.of(context).loadAnnouncementsFailed;
+          }
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -114,7 +119,7 @@ class _AnnouncementListPageState extends State<AnnouncementListPage> {
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadAnnouncements,
-            tooltip: '重新載入',
+            tooltip: AppLocalizations.of(context).reload,
           ),
         ],
       ),
@@ -144,7 +149,7 @@ class _AnnouncementListPageState extends State<AnnouncementListPage> {
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: _loadAnnouncements,
-              child: const Text('重試'),
+              child: Text(AppLocalizations.of(context).retry),
             ),
           ],
         ),
@@ -152,15 +157,15 @@ class _AnnouncementListPageState extends State<AnnouncementListPage> {
     }
 
     if (_announcements.isEmpty) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.notifications_none, size: 64, color: Colors.grey),
-            SizedBox(height: 16),
+            const Icon(Icons.notifications_none, size: 64, color: Colors.grey),
+            const SizedBox(height: 16),
             Text(
-              '目前沒有公告',
-              style: TextStyle(fontSize: 16, color: Colors.grey),
+              AppLocalizations.of(context).noCoursesFound,
+              style: const TextStyle(fontSize: 16, color: Colors.grey),
             ),
           ],
         ),
@@ -353,10 +358,12 @@ class _AnnouncementBottomSheetState extends State<_AnnouncementBottomSheet> {
       // 緩存不存在，從網路載入
       await _fetchFromNetwork();
     } catch (e) {
-      setState(() {
-        _errorMessage = '載入公告詳情時發生錯誤：$e';
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _errorMessage = AppLocalizations.of(context).loadAnnouncementDetailFailedWithError(e.toString());
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -367,10 +374,12 @@ class _AnnouncementBottomSheetState extends State<_AnnouncementBottomSheet> {
           .getAnnouncementDetail(widget.announcement, courseId: widget.courseId);
 
       if (detail == null) {
-        setState(() {
-          _errorMessage = '無法載入公告詳情';
-          _isLoading = false;
-        });
+        if (mounted) {
+          setState(() {
+            _errorMessage = AppLocalizations.of(context).cannotLoadAnnouncementDetail;
+            _isLoading = false;
+          });
+        }
         return;
       }
 
@@ -428,7 +437,7 @@ class _AnnouncementBottomSheetState extends State<_AnnouncementBottomSheet> {
           .getAnnouncementDetail(widget.announcement, courseId: widget.courseId, highPriority: true);
       
       if (updatedDetail == null) {
-        throw Exception('無法獲取最新的公告內容');
+        throw Exception(mounted ? AppLocalizations.of(context).cannotGetLatestAnnouncementContent : 'Cannot get latest announcement content');
       }
       
       // 從更新後的詳情中找到對應的附件 URL
@@ -441,7 +450,7 @@ class _AnnouncementBottomSheetState extends State<_AnnouncementBottomSheet> {
       }
       
       if (updatedFileUrl == null) {
-        throw Exception('找不到附件：$fileName');
+        throw Exception(mounted ? AppLocalizations.of(context).cannotFindAttachment(fileName) : 'Cannot find attachment: $fileName');
       }
       
       debugPrint('[AnnouncementAttachment] Updated URL: $updatedFileUrl');
@@ -484,11 +493,12 @@ class _AnnouncementBottomSheetState extends State<_AnnouncementBottomSheet> {
       debugPrint('[AnnouncementAttachment] Download completed: $downloadedFileName');
 
       if (mounted) {
+        final l10n = AppLocalizations.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('下載完成：$downloadedFileName'),
+            content: Text(l10n.downloadCompletedWithFileName(downloadedFileName)),
             action: SnackBarAction(
-              label: '開啟',
+              label: l10n.open,
               onPressed: () => _openFile(filePath),
             ),
             duration: const Duration(seconds: 5),
@@ -501,7 +511,7 @@ class _AnnouncementBottomSheetState extends State<_AnnouncementBottomSheet> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('下載失敗：$e'),
+            content: Text(AppLocalizations.of(context).downloadFailedWithError(e.toString())),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 5),
           ),
@@ -524,27 +534,28 @@ class _AnnouncementBottomSheetState extends State<_AnnouncementBottomSheet> {
 
       final file = File(path);
       if (!await file.exists()) {
-        throw Exception('檔案不存在');
+        throw Exception(mounted ? AppLocalizations.of(context).fileNotFound : 'File not found');
       }
 
       final result = await OpenFilex.open(path);
       debugPrint('[AnnouncementAttachment] Open result: ${result.type} - ${result.message}');
 
-      if (result.type != ResultType.done) {
-        String errorMsg = '開啟檔案失敗';
+      if (result.type != ResultType.done && mounted) {
+        final l10n = AppLocalizations.of(context);
+        String errorMsg = l10n.openFileFailed;
 
         switch (result.type) {
           case ResultType.noAppToOpen:
-            errorMsg = '沒有可開啟此檔案的應用程式';
+            errorMsg = l10n.noAppToOpenFile;
             break;
           case ResultType.fileNotFound:
-            errorMsg = '找不到檔案';
+            errorMsg = l10n.fileNotFoundError;
             break;
           case ResultType.permissionDenied:
-            errorMsg = '權限被拒絕';
+            errorMsg = l10n.permissionDenied;
             break;
           case ResultType.error:
-            errorMsg = '開啟檔案時發生錯誤：${result.message}';
+            errorMsg = l10n.openFileErrorWithMessage(result.message);
             break;
           default:
             errorMsg = result.message;
@@ -555,7 +566,7 @@ class _AnnouncementBottomSheetState extends State<_AnnouncementBottomSheet> {
             SnackBar(
               content: Text(errorMsg),
               action: SnackBarAction(
-                label: '分享',
+                label: l10n.share,
                 onPressed: () => _shareFile(path),
               ),
             ),
@@ -566,7 +577,7 @@ class _AnnouncementBottomSheetState extends State<_AnnouncementBottomSheet> {
       debugPrint('[AnnouncementAttachment] Open file error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('開啟檔案失敗：$e')),
+          SnackBar(content: Text(AppLocalizations.of(context).openFileFailedWithError(e.toString()))),
         );
       }
     }
@@ -584,7 +595,7 @@ class _AnnouncementBottomSheetState extends State<_AnnouncementBottomSheet> {
       debugPrint('[AnnouncementAttachment] Share file error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('分享失敗：$e')),
+          SnackBar(content: Text(AppLocalizations.of(context).shareFailedWithError(e.toString()))),
         );
       }
     }
@@ -601,17 +612,17 @@ class _AnnouncementBottomSheetState extends State<_AnnouncementBottomSheet> {
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('已刪除：$fileName')),
+            SnackBar(content: Text(AppLocalizations.of(context).fileDeleted(fileName))),
           );
         }
       } else {
-        throw Exception('刪除失敗');
+        throw Exception(mounted ? AppLocalizations.of(context).deleteFailed('') : 'Delete failed');
       }
     } catch (e) {
       debugPrint('[AnnouncementAttachment] Delete file error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('刪除失敗：$e')),
+          SnackBar(content: Text(AppLocalizations.of(context).deleteFailedWithError(e.toString()))),
         );
       }
     }
@@ -627,7 +638,7 @@ class _AnnouncementBottomSheetState extends State<_AnnouncementBottomSheet> {
           children: [
             ListTile(
               leading: const Icon(Icons.open_in_new),
-              title: const Text('開啟'),
+              title: Text(AppLocalizations.of(context).open),
               onTap: () {
                 Navigator.pop(context);
                 _openFile(filePath);
@@ -635,7 +646,7 @@ class _AnnouncementBottomSheetState extends State<_AnnouncementBottomSheet> {
             ),
             ListTile(
               leading: const Icon(Icons.share),
-              title: const Text('分享'),
+              title: Text(AppLocalizations.of(context).share),
               onTap: () {
                 Navigator.pop(context);
                 _shareFile(filePath);
@@ -643,7 +654,7 @@ class _AnnouncementBottomSheetState extends State<_AnnouncementBottomSheet> {
             ),
             ListTile(
               leading: const Icon(Icons.delete, color: Colors.red),
-              title: const Text('刪除', style: TextStyle(color: Colors.red)),
+              title: Text(AppLocalizations.of(context).delete, style: const TextStyle(color: Colors.red)),
               onTap: () {
                 Navigator.pop(context);
                 _confirmDelete(fileName, filePath);
@@ -657,15 +668,16 @@ class _AnnouncementBottomSheetState extends State<_AnnouncementBottomSheet> {
 
   /// 確認刪除對話框
   void _confirmDelete(String fileName, String filePath) {
+    final l10n = AppLocalizations.of(context);
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('確認刪除'),
-        content: Text('確定要刪除「$fileName」嗎？'),
+        title: Text(l10n.confirmDelete),
+        content: Text(l10n.confirmDeleteFile(fileName)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
+            child: Text(l10n.cancel),
           ),
           TextButton(
             onPressed: () {
@@ -673,7 +685,7 @@ class _AnnouncementBottomSheetState extends State<_AnnouncementBottomSheet> {
               _deleteFile(filePath, fileName);
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('刪除'),
+            child: Text(l10n.delete),
           ),
         ],
       ),
@@ -785,7 +797,7 @@ class _AnnouncementBottomSheetState extends State<_AnnouncementBottomSheet> {
                   });
                   _loadDetail();
                 },
-                child: const Text('重試'),
+                child: Text(AppLocalizations.of(context).retry),
               ),
             ],
           ),
@@ -794,10 +806,10 @@ class _AnnouncementBottomSheetState extends State<_AnnouncementBottomSheet> {
     }
 
     if (_detail == null) {
-      return const Center(
+      return Center(
         child: Padding(
-          padding: EdgeInsets.all(16),
-          child: Text('無公告內容'),
+          padding: const EdgeInsets.all(16),
+          child: Text(AppLocalizations.of(context).noAnnouncementContent),
         ),
       );
     }
@@ -864,7 +876,7 @@ class _AnnouncementBottomSheetState extends State<_AnnouncementBottomSheet> {
                   } else {
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('無法開啟連結：$url')),
+                        SnackBar(content: Text(AppLocalizations.of(context).cannotOpenLink(url))),
                       );
                     }
                   }
@@ -872,7 +884,7 @@ class _AnnouncementBottomSheetState extends State<_AnnouncementBottomSheet> {
                   debugPrint('[AnnouncementDialog] Error launching URL: $e');
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('開啟連結失敗：$e')),
+                      SnackBar(content: Text(AppLocalizations.of(context).openLinkFailedWithError(e.toString()))),
                     );
                   }
                 }
@@ -883,9 +895,9 @@ class _AnnouncementBottomSheetState extends State<_AnnouncementBottomSheet> {
           if (_detail!.hasAttachments) ...[
             const SizedBox(height: 16),
             const Divider(),
-            const Text(
-              '附件',
-              style: TextStyle(
+            Text(
+              AppLocalizations.of(context).attachments,
+              style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
@@ -931,7 +943,7 @@ class _AnnouncementBottomSheetState extends State<_AnnouncementBottomSheet> {
                       style: const TextStyle(fontSize: 14),
                     ),
                     subtitle: Text(
-                      isDownloaded ? '已下載 · 點擊開啟' : '點擊下載',
+                      isDownloaded ? AppLocalizations.of(context).downloaded_clickToOpen : AppLocalizations.of(context).clickToDownload,
                       style: TextStyle(
                         fontSize: 12,
                         color: isDownloaded ? Colors.green : Colors.grey,

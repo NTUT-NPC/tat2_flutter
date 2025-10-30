@@ -8,6 +8,7 @@ import '../../models/ischool_plus/course_file.dart';
 import '../../services/ischool_plus_service.dart';
 import '../../services/file_store.dart';
 import '../../services/file_download_service.dart';
+import '../../l10n/app_localizations.dart';
 
 /// 課程檔案列表頁面
 /// 完全重構版本 - 使用新的下載服務架構
@@ -78,10 +79,13 @@ class _CourseFilesPageState extends State<CourseFilesPage> {
       if (!service.isLoggedIn) {
         final loginSuccess = await service.login();
         if (!loginSuccess) {
-          setState(() {
-            _errorMessage = '登入 i學院失敗，請稍後再試';
-            _isLoading = false;
-          });
+          if (mounted) {
+            final l10n = AppLocalizations.of(context);
+            setState(() {
+              _errorMessage = l10n.loginISchoolFailed;
+              _isLoading = false;
+            });
+          }
           return;
         }
       }
@@ -96,10 +100,13 @@ class _CourseFilesPageState extends State<CourseFilesPage> {
 
       debugPrint('[CourseFiles] Loaded ${files.length} files');
     } catch (e) {
-      setState(() {
-        _errorMessage = '載入檔案列表時發生錯誤：$e';
-        _isLoading = false;
-      });
+      if (mounted) {
+        final l10n = AppLocalizations.of(context);
+        setState(() {
+          _errorMessage = l10n.loadFilesError(e.toString());
+          _isLoading = false;
+        });
+      }
       debugPrint('[CourseFiles] Load files error: $e');
     }
   }

@@ -41,7 +41,7 @@ class _CalendarPageState extends State<CalendarPage> {
             onPressed: () {
               calendarProvider.resetToToday();
             },
-            tooltip: '回到今天',
+            tooltip: l10n.backToToday,
           ),
           // 刷新
           IconButton(
@@ -49,14 +49,14 @@ class _CalendarPageState extends State<CalendarPage> {
             onPressed: () {
               calendarProvider.refresh();
             },
-            tooltip: '重新載入',
+            tooltip: l10n.reload,
           ),
         ],
       ),
       body: _buildBody(calendarProvider),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddEventBottomSheet(context),
-        tooltip: '新增事件',
+        tooltip: l10n.addEvent,
         backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.7),
         foregroundColor: Colors.white,
         child: const Icon(Icons.add),
@@ -94,6 +94,10 @@ class _CalendarPageState extends State<CalendarPage> {
 
   /// 構建日曆視圖
   Widget _buildCalendar(CalendarProvider provider) {
+    // 根據當前語言設定 locale
+    final locale = Localizations.localeOf(context);
+    final localeString = locale.languageCode == 'en' ? 'en_US' : 'zh_TW';
+    
     return Card(
       margin: const EdgeInsets.all(8.0),
       child: Padding(
@@ -107,7 +111,7 @@ class _CalendarPageState extends State<CalendarPage> {
           },
           calendarFormat: _calendarFormat,
           startingDayOfWeek: StartingDayOfWeek.monday,
-          locale: 'zh_TW',
+          locale: localeString,
           // 樣式設定
           calendarStyle: CalendarStyle(
             // 調整日期單元格的邊距
@@ -288,6 +292,7 @@ class _CalendarPageState extends State<CalendarPage> {
     final selectedEvents = provider.selectedDayEvents;
 
     if (selectedEvents.isEmpty) {
+      final l10n = AppLocalizations.of(context);
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -299,7 +304,7 @@ class _CalendarPageState extends State<CalendarPage> {
             ),
             const SizedBox(height: 16),
             Text(
-              '這天沒有事件',
+              l10n.noEventsOnThisDay,
               style: TextStyle(
                 fontSize: 16,
                 color: Colors.grey.shade600,
@@ -392,28 +397,31 @@ class _CalendarPageState extends State<CalendarPage> {
         onTap: () => _showEventDetail(event),
         trailing: event.isLocalEvent
             ? PopupMenuButton(
-                itemBuilder: (context) => [
-                  const PopupMenuItem(
-                    value: 'edit',
-                    child: Row(
-                      children: [
-                        Icon(Icons.edit, size: 20),
-                        SizedBox(width: 8),
-                        Text('編輯'),
-                      ],
+                itemBuilder: (context) {
+                  final l10n = AppLocalizations.of(context);
+                  return [
+                    PopupMenuItem(
+                      value: 'edit',
+                      child: Row(
+                        children: [
+                          const Icon(Icons.edit, size: 20),
+                          const SizedBox(width: 8),
+                          Text(l10n.edit),
+                        ],
+                      ),
                     ),
-                  ),
-                  const PopupMenuItem(
-                    value: 'delete',
-                    child: Row(
-                      children: [
-                        Icon(Icons.delete, size: 20, color: Colors.red),
-                        SizedBox(width: 8),
-                        Text('刪除', style: TextStyle(color: Colors.red)),
-                      ],
+                    PopupMenuItem(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          const Icon(Icons.delete, size: 20, color: Colors.red),
+                          const SizedBox(width: 8),
+                          Text(l10n.delete, style: const TextStyle(color: Colors.red)),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ];
+                },
                 onSelected: (value) async {
                   if (value == 'edit') {
                     await _editLocalEvent(context, event.localEvent!);
@@ -429,6 +437,7 @@ class _CalendarPageState extends State<CalendarPage> {
 
   /// 構建錯誤視圖
   Widget _buildErrorView(String error) {
+    final l10n = AppLocalizations.of(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -438,7 +447,7 @@ class _CalendarPageState extends State<CalendarPage> {
             Icon(Icons.error_outline, size: 64, color: Colors.red.shade400),
             const SizedBox(height: 16),
             Text(
-              '載入失敗',
+              l10n.loadFailed,
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -460,7 +469,7 @@ class _CalendarPageState extends State<CalendarPage> {
                 context.read<CalendarProvider>().refresh();
               },
               icon: const Icon(Icons.refresh),
-              label: const Text('重試'),
+              label: Text(l10n.retry),
             ),
           ],
         ),
@@ -470,6 +479,7 @@ class _CalendarPageState extends State<CalendarPage> {
 
   /// 顯示事件詳情
   void _showEventDetail(event) {
+    final l10n = AppLocalizations.of(context);
     // 檢查是否有時間資訊（不是 00:00）
     final hasStartTime = event.startTime.hour != 0 || event.startTime.minute != 0;
     final hasEndTime = event.endTime.hour != 0 || event.endTime.minute != 0;
@@ -485,16 +495,16 @@ class _CalendarPageState extends State<CalendarPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (hasTime)
-                _buildDetailRow(Icons.access_time, '時間', event.dateRangeText)
+                _buildDetailRow(Icons.access_time, l10n.time, event.dateRangeText)
               else
-                _buildDetailRow(Icons.calendar_today, '日期', event.dateRangeText),
+                _buildDetailRow(Icons.calendar_today, l10n.date, event.dateRangeText),
               if (event.location != null)
-                _buildDetailRow(Icons.location_on, '地點', event.location!),
+                _buildDetailRow(Icons.location_on, l10n.location, event.location!),
               if (event.description != null) ...[
                 const SizedBox(height: 12),
-                const Text(
-                  '說明',
-                  style: TextStyle(
+                Text(
+                  l10n.description,
+                  style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
                   ),
@@ -508,7 +518,7 @@ class _CalendarPageState extends State<CalendarPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('關閉'),
+            child: Text(l10n.close),
           ),
         ],
       ),
@@ -564,9 +574,10 @@ class _CalendarPageState extends State<CalendarPage> {
         await calendarProvider.loadLocalEvents();
         
         if (mounted) {
+          final l10n = AppLocalizations.of(context);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('事件已更新'),
+              content: Text(l10n.eventUpdated),
               backgroundColor: Theme.of(context).colorScheme.primary,
               behavior: SnackBarBehavior.floating,
               duration: const Duration(seconds: 2),
@@ -575,8 +586,9 @@ class _CalendarPageState extends State<CalendarPage> {
         }
       } catch (e) {
         if (mounted) {
+          final l10n = AppLocalizations.of(context);
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('更新失敗：$e')),
+            SnackBar(content: Text(l10n.updateFailed(e.toString()))),
           );
         }
       }
@@ -585,20 +597,21 @@ class _CalendarPageState extends State<CalendarPage> {
 
   /// 刪除本地事件
   Future<void> _deleteLocalEvent(BuildContext context, localEvent) async {
+    final l10n = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('確認刪除'),
-        content: Text('確定要刪除「${localEvent.title}」嗎？'),
+        title: Text(l10n.confirmDelete),
+        content: Text(l10n.confirmDeleteEvent(localEvent.title)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
+            child: Text(l10n.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('刪除'),
+            child: Text(l10n.delete),
           ),
         ],
       ),
@@ -611,9 +624,10 @@ class _CalendarPageState extends State<CalendarPage> {
         await context.read<CalendarProvider>().loadLocalEvents();
         
         if (mounted) {
+          final l10n = AppLocalizations.of(context);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('事件已刪除'),
+              content: Text(l10n.eventDeleted),
               backgroundColor: Theme.of(context).colorScheme.primary,
               behavior: SnackBarBehavior.floating,
               duration: const Duration(seconds: 2),
@@ -622,8 +636,9 @@ class _CalendarPageState extends State<CalendarPage> {
         }
       } catch (e) {
         if (mounted) {
+          final l10n = AppLocalizations.of(context);
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('刪除失敗：$e')),
+            SnackBar(content: Text(l10n.deleteFailed(e.toString()))),
           );
         }
       }
@@ -653,9 +668,10 @@ class _CalendarPageState extends State<CalendarPage> {
         await calendarProvider.loadLocalEvents();
         
         if (mounted) {
+          final l10n = AppLocalizations.of(context);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('事件已新增'),
+              content: Text(l10n.eventAdded),
               backgroundColor: Theme.of(context).colorScheme.primary,
               behavior: SnackBarBehavior.floating,
               duration: const Duration(seconds: 2),
@@ -664,8 +680,9 @@ class _CalendarPageState extends State<CalendarPage> {
         }
       } catch (e) {
         if (mounted) {
+          final l10n = AppLocalizations.of(context);
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('新增失敗：$e')),
+            SnackBar(content: Text(l10n.addFailed(e.toString()))),
           );
         }
       }

@@ -48,11 +48,15 @@ class Course {
   }
 
   /// 解析上課時間（例如 "二234" → "週二 10:10-13:00"）
-  String get formattedTime {
+  /// [l10n] 為可選參數，如提供則使用國際化，否則使用繁中預設值
+  String getFormattedTime([dynamic l10n]) {
     if (timeSlots == null || timeSlots!.isEmpty) return '時間未定';
     
     // 簡化版，實際需要更複雜的解析
-    final weekdayMap = {
+    final weekdayMap = l10n != null ? {
+      '一': l10n.monShort, '二': l10n.tueShort, '三': l10n.wedShort, 
+      '四': l10n.thuShort, '五': l10n.friShort, '六': l10n.satShort, '日': l10n.sunShort,
+    } : {
       '一': '週一', '二': '週二', '三': '週三', 
       '四': '週四', '五': '週五', '六': '週六', '日': '週日',
     };
@@ -61,4 +65,7 @@ class Course {
     final weekday = weekdayMap[firstChar] ?? '';
     return '$weekday $timeSlots';
   }
+  
+  /// 向後兼容的 getter (使用繁中預設值)
+  String get formattedTime => getFormattedTime();
 }

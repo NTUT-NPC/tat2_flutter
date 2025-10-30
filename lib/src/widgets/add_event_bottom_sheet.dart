@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/local_calendar_event.dart';
+import '../l10n/app_localizations.dart';
 
 /// 新增/編輯事件 Bottom Sheet
 class AddEventBottomSheet extends StatefulWidget {
@@ -33,16 +34,20 @@ class _AddEventBottomSheetState extends State<AddEventBottomSheet> {
   String _selectedColor = '#2196F3';
   bool _isAdvancedMode = false;
 
-  final List<Map<String, dynamic>> _colorOptions = [
-    {'name': '藍色', 'value': '#2196F3'},
-    {'name': '紅色', 'value': '#F44336'},
-    {'name': '綠色', 'value': '#4CAF50'},
-    {'name': '橙色', 'value': '#FF9800'},
-    {'name': '紫色', 'value': '#9C27B0'},
-    {'name': '粉色', 'value': '#E91E63'},
-    {'name': '青色', 'value': '#00BCD4'},
-    {'name': '黃色', 'value': '#FFEB3B'},
-  ];
+  // 顏色選項將在 build 時動態生成以支援國際化
+  List<Map<String, dynamic>> _getColorOptions(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return [
+      {'name': l10n.colorBlue, 'value': '#2196F3'},
+      {'name': l10n.colorRed, 'value': '#F44336'},
+      {'name': l10n.colorGreen, 'value': '#4CAF50'},
+      {'name': l10n.colorOrange, 'value': '#FF9800'},
+      {'name': l10n.colorPurple, 'value': '#9C27B0'},
+      {'name': l10n.colorPink, 'value': '#E91E63'},
+      {'name': l10n.colorTeal, 'value': '#00BCD4'},
+      {'name': l10n.colorYellow, 'value': '#FFEB3B'},
+    ];
+  }
 
   @override
   void initState() {
@@ -117,7 +122,9 @@ class _AddEventBottomSheetState extends State<AddEventBottomSheet> {
                   children: [
                     Expanded(
                       child: Text(
-                        widget.event == null ? '新增事件' : '編輯事件',
+                        widget.event == null 
+                            ? AppLocalizations.of(context).addEvent 
+                            : AppLocalizations.of(context).editEvent,
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
@@ -178,16 +185,17 @@ class _AddEventBottomSheetState extends State<AddEventBottomSheet> {
   }
 
   Widget _buildTitleField() {
+    final l10n = AppLocalizations.of(context);
     return TextFormField(
       controller: _titleController,
-      decoration: const InputDecoration(
-        labelText: '標題 *',
-        prefixIcon: Icon(Icons.title),
-        border: OutlineInputBorder(),
+      decoration: InputDecoration(
+        labelText: l10n.titleRequired,
+        prefixIcon: const Icon(Icons.title),
+        border: const OutlineInputBorder(),
       ),
       validator: (value) {
         if (value == null || value.trim().isEmpty) {
-          return '請輸入標題';
+          return l10n.pleaseEnterTitle;
         }
         return null;
       },
@@ -195,12 +203,13 @@ class _AddEventBottomSheetState extends State<AddEventBottomSheet> {
   }
 
   Widget _buildDateField() {
+    final l10n = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          '日期',
-          style: TextStyle(
+        Text(
+          l10n.date,
+          style: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
           ),
@@ -214,12 +223,12 @@ class _AddEventBottomSheetState extends State<AddEventBottomSheet> {
               border: Border.all(color: Colors.grey),
               borderRadius: BorderRadius.circular(4),
             ),
-            child: Row(
+              child: Row(
               children: [
                 const Icon(Icons.calendar_today),
                 const SizedBox(width: 12),
                 Text(
-                  DateFormat('yyyy年MM月dd日 (E)', 'zh_TW').format(_startDate),
+                  DateFormat(l10n.dateFormatWithWeekday, Localizations.localeOf(context).toString()).format(_startDate),
                   style: const TextStyle(fontSize: 16),
                 ),
               ],
@@ -231,31 +240,34 @@ class _AddEventBottomSheetState extends State<AddEventBottomSheet> {
   }
 
   Widget _buildDescriptionField() {
+    final l10n = AppLocalizations.of(context);
     return TextFormField(
       controller: _descriptionController,
-      decoration: const InputDecoration(
-        labelText: '描述',
-        prefixIcon: Icon(Icons.description),
-        border: OutlineInputBorder(),
+      decoration: InputDecoration(
+        labelText: l10n.description,
+        prefixIcon: const Icon(Icons.description),
+        border: const OutlineInputBorder(),
       ),
       maxLines: 3,
     );
   }
 
   Widget _buildLocationField() {
+    final l10n = AppLocalizations.of(context);
     return TextFormField(
       controller: _locationController,
-      decoration: const InputDecoration(
-        labelText: '地點',
-        prefixIcon: Icon(Icons.location_on),
-        border: OutlineInputBorder(),
+      decoration: InputDecoration(
+        labelText: l10n.location,
+        prefixIcon: const Icon(Icons.location_on),
+        border: const OutlineInputBorder(),
       ),
     );
   }
 
   Widget _buildAllDaySwitch() {
+    final l10n = AppLocalizations.of(context);
     return SwitchListTile(
-      title: const Text('全天事件'),
+      title: Text(l10n.allDayEvent),
       value: _isAllDay,
       onChanged: (value) {
         setState(() {
@@ -267,11 +279,12 @@ class _AddEventBottomSheetState extends State<AddEventBottomSheet> {
   }
 
   Widget _buildTimeSection() {
+    final l10n = AppLocalizations.of(context);
     return Row(
       children: [
         Expanded(
           child: _buildTimeButton(
-            label: '開始時間',
+            label: l10n.startTime,
             time: _startTime,
             onTap: _selectStartTime,
           ),
@@ -279,7 +292,7 @@ class _AddEventBottomSheetState extends State<AddEventBottomSheet> {
         const SizedBox(width: 12),
         Expanded(
           child: _buildTimeButton(
-            label: '結束時間',
+            label: l10n.endTime,
             time: _endTime,
             onTap: _selectEndTime,
           ),
@@ -293,6 +306,7 @@ class _AddEventBottomSheetState extends State<AddEventBottomSheet> {
     TimeOfDay? time,
     required VoidCallback onTap,
   }) {
+    final l10n = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -317,7 +331,7 @@ class _AddEventBottomSheetState extends State<AddEventBottomSheet> {
                 const Icon(Icons.access_time),
                 const SizedBox(width: 8),
                 Text(
-                  time != null ? time.format(context) : '未設定',
+                  time != null ? time.format(context) : l10n.notSet,
                   style: TextStyle(
                     color: time != null ? Colors.black : Colors.grey,
                   ),
@@ -331,6 +345,7 @@ class _AddEventBottomSheetState extends State<AddEventBottomSheet> {
   }
 
   Widget _buildAdvancedToggle() {
+    final l10n = AppLocalizations.of(context);
     return InkWell(
       onTap: () {
         setState(() {
@@ -348,7 +363,7 @@ class _AddEventBottomSheetState extends State<AddEventBottomSheet> {
             ),
             const SizedBox(width: 8),
             Text(
-              '更多選項',
+              l10n.moreOptions,
               style: TextStyle(
                 color: Theme.of(context).colorScheme.primary,
                 fontWeight: FontWeight.w500,
@@ -361,12 +376,14 @@ class _AddEventBottomSheetState extends State<AddEventBottomSheet> {
   }
 
   Widget _buildColorPicker() {
+    final l10n = AppLocalizations.of(context);
+    final colorOptions = _getColorOptions(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          '顏色',
-          style: TextStyle(
+        Text(
+          l10n.color,
+          style: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
           ),
@@ -375,7 +392,7 @@ class _AddEventBottomSheetState extends State<AddEventBottomSheet> {
         Wrap(
           spacing: 8,
           runSpacing: 8,
-          children: _colorOptions.map((colorOption) {
+          children: colorOptions.map((colorOption) {
             final colorValue = colorOption['value'] as String;
             final isSelected = _selectedColor == colorValue;
             return GestureDetector(
@@ -407,12 +424,13 @@ class _AddEventBottomSheetState extends State<AddEventBottomSheet> {
   }
 
   Widget _buildRecurrenceSection() {
+    final l10n = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          '重複',
-          style: TextStyle(
+        Text(
+          l10n.recurrence,
+          style: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
           ),
@@ -452,8 +470,8 @@ class _AddEventBottomSheetState extends State<AddEventBottomSheet> {
                   const SizedBox(width: 8),
                   Text(
                     _recurrenceEndDate == null
-                        ? '選擇結束日期（選填）'
-                        : '結束於：${DateFormat('yyyy/MM/dd').format(_recurrenceEndDate!)}',
+                        ? l10n.selectEndDateOptional
+                        : l10n.endOn(DateFormat('yyyy/MM/dd').format(_recurrenceEndDate!)),
                   ),
                   const Spacer(),
                   if (_recurrenceEndDate != null)
@@ -475,27 +493,29 @@ class _AddEventBottomSheetState extends State<AddEventBottomSheet> {
   }
 
   String _getRecurrenceText(RecurrenceType type) {
+    final l10n = AppLocalizations.of(context);
     switch (type) {
       case RecurrenceType.none:
-        return '不重複';
+        return l10n.noRecurrence;
       case RecurrenceType.daily:
-        return '每天';
+        return l10n.daily;
       case RecurrenceType.weekly:
-        return '每週';
+        return l10n.weekly;
       case RecurrenceType.monthly:
-        return '每月';
+        return l10n.monthly;
       case RecurrenceType.yearly:
-        return '每年';
+        return l10n.yearly;
     }
   }
 
   Widget _buildSaveButton() {
+    final l10n = AppLocalizations.of(context);
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton.icon(
         onPressed: _saveEvent,
         icon: const Icon(Icons.check),
-        label: Text(widget.event == null ? '新增' : '儲存'),
+        label: Text(widget.event == null ? l10n.add : l10n.save),
         style: ElevatedButton.styleFrom(
           backgroundColor: Theme.of(context).colorScheme.primary,
           foregroundColor: Colors.white,
@@ -511,7 +531,7 @@ class _AddEventBottomSheetState extends State<AddEventBottomSheet> {
       initialDate: _startDate,
       firstDate: DateTime(2020),
       lastDate: DateTime(2030),
-      locale: const Locale('zh', 'TW'),
+      locale: Localizations.localeOf(context),
     );
     if (picked != null) {
       setState(() {
@@ -551,7 +571,7 @@ class _AddEventBottomSheetState extends State<AddEventBottomSheet> {
       initialDate: _recurrenceEndDate ?? _startDate,
       firstDate: _startDate,
       lastDate: DateTime(2030),
-      locale: const Locale('zh', 'TW'),
+      locale: Localizations.localeOf(context),
     );
     if (picked != null) {
       setState(() {
@@ -591,9 +611,10 @@ class _AddEventBottomSheetState extends State<AddEventBottomSheet> {
 
     // 驗證時間
     if (endDateTime.isBefore(startDateTime)) {
+      final l10n = AppLocalizations.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('結束時間不能早於開始時間'),
+          content: Text(l10n.endTimeBeforeStart),
           backgroundColor: Theme.of(context).colorScheme.primary,
           behavior: SnackBarBehavior.floating,
           duration: const Duration(seconds: 2),

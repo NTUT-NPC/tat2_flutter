@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../l10n/app_localizations.dart';
 
 /// 使用者條款頁面
 class TermsOfServicePage extends StatelessWidget {
@@ -20,9 +21,11 @@ class TermsOfServicePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    
     return Scaffold(
       appBar: AppBar(
-        title: const Text('使用者條款'),
+        title: Text(l10n.termsOfServiceTitle),
       ),
       body: FutureBuilder<String>(
         future: _loadMarkdown(),
@@ -36,7 +39,7 @@ class TermsOfServicePage extends StatelessWidget {
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Text(
-                  '載入失敗：${snapshot.error}',
+                  l10n.loadFailedWithMsg(snapshot.error.toString()),
                   style: const TextStyle(color: Colors.red),
                 ),
               ),
