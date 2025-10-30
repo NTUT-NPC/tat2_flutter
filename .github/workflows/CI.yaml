@@ -103,17 +103,17 @@ jobs:
           name: release-apk-${{ env.BUILD_TIMESTAMP }}
           path: build/app/outputs/flutter-apk/app-debug.apk
 
-      - name: Create Pre-release and Upload Assets
-        uses: softprops/action-gh-release@v1
-        with:
-            tag_name: "pre-release-${{ github.sha }}"
-            name: "Pre-release ${{ github.sha }}"
-            body: "Automated pre-release for commit ${{ github.sha }}"
-            prerelease: true
-            files: |
-              build/app/outputs/flutter-apk/debug.apk
-        env:
-            GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+#      - name: Create Pre-release and Upload Assets
+#        uses: softprops/action-gh-release@v1
+#        with:
+#            tag_name: "pre-release-${{ github.sha }}"
+#            name: "Pre-release ${{ github.sha }}"
+#            body: "Automated pre-release for commit ${{ github.sha }}"
+#            prerelease: true
+#            files: |
+#              build/app/outputs/flutter-apk/debug.apk
+#        env:
+#            GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
 
   build-ios:
     name: Build Flutter (iOS)
