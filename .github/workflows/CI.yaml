@@ -96,7 +96,7 @@ jobs:
             packageName: club.ntut.npc.tat2
             releaseFiles: build/app/outputs/bundle/release/app-release.aab
             track: internal
-            status: draft
+            status: inProgress
 
       - name: Build Android APK
         run: flutter build apk --debug
