@@ -44,6 +44,9 @@ class _CourseTablePageState extends State<CourseTablePage> {
   // 追蹤是否正在等待登入
   bool _waitingForLogin = false;
   
+  // 追蹤上一次的登入狀態
+  bool _wasLoggedIn = false;
+  
   @override
   void initState() {
     super.initState();
@@ -53,6 +56,7 @@ class _CourseTablePageState extends State<CourseTablePage> {
     // 監聽登入狀態變化
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final authProvider = context.read<AuthProviderV2>();
+      _wasLoggedIn = authProvider.isLoggedIn;
       authProvider.addListener(_onAuthStateChanged);
     });
   }
@@ -72,10 +76,24 @@ class _CourseTablePageState extends State<CourseTablePage> {
   /// 監聽登入狀態變化
   void _onAuthStateChanged() {
     final authProvider = context.read<AuthProviderV2>();
+    final isNowLoggedIn = authProvider.isLoggedIn;
     
-    // 如果正在等待登入，且現在已登入成功，則自動重新載入
-    if (_waitingForLogin && authProvider.isLoggedIn && !authProvider.isLoading) {
-      debugPrint('[CourseTable] 檢測到登入完成，重新載入學期列表');
+    // 檢測從未登入變為已登入（登入成功）
+    if (!_wasLoggedIn && isNowLoggedIn && !authProvider.isLoading) {
+      debugPrint('[CourseTable] 檢測到從訪客模式登入成功');
+      _wasLoggedIn = true;
+      _waitingForLogin = false;
+      // 不刷新，保持現有緩存
+    }
+    // 檢測從已登入變為未登入（登出）
+    else if (_wasLoggedIn && !isNowLoggedIn) {
+      debugPrint('[CourseTable] 檢測到登出');
+      _wasLoggedIn = false;
+    }
+    // 如果正在等待登入，且現在已登入成功
+    else if (_waitingForLogin && isNowLoggedIn && !authProvider.isLoading) {
+      debugPrint('[CourseTable] 等待登入完成，重新載入學期列表');
+      _wasLoggedIn = true;
       _waitingForLogin = false;
       _loadAvailableSemesters();
     }
@@ -241,13 +259,13 @@ class _CourseTablePageState extends State<CourseTablePage> {
       if (!hasCache || retryCount > 0) {
         // 檢查是否已登入
         if (!authProvider.isLoggedIn) {
-          // 如果有緩存，先使用緩存顯示
+          // 訪客模式：如果有緩存，直接使用緩存
           if (hasCache && availableSemesters.isNotEmpty) {
-            debugPrint('[CourseTable] 未登入，使用緩存的學期列表');
-            // 繼續使用緩存，不中斷流程
+            debugPrint('[CourseTable] 訪客模式：使用緩存的學期列表（${availableSemesters.length} 個），跳過 API 請求');
+            // 在訪客模式下，有緩存就直接跳到後續處理邏輯，不調用 API
           } else {
-            // 沒有緩存就不要卡在轉圈圈，顯示空狀態並等待登入完成
-            debugPrint('[CourseTable] 未登入且無緩存 => 顯示空狀態，等待登入完成');
+            // 訪客模式且沒有緩存：顯示空狀態並等待登入
+            debugPrint('[CourseTable] 訪客模式且無緩存 => 顯示空狀態，等待登入完成');
             setState(() {
               _waitingForLogin = true;
               _isLoading = false;
@@ -259,6 +277,7 @@ class _CourseTablePageState extends State<CourseTablePage> {
             return;
           }
         } else {
+          // 已登入：從 API 獲取最新數據
           debugPrint('[CourseTable] 從 API 獲取學期列表');
           
           try {
@@ -512,16 +531,34 @@ class _CourseTablePageState extends State<CourseTablePage> {
         }
       }
       
+      // 2. 檢查登入狀態，訪客模式下不調用 API
+      final authProvider = context.read<AuthProviderV2>();
+      if (!authProvider.isLoggedIn) {
+        debugPrint('[CourseTable] 訪客模式：無法從 API 獲取課表，需要登入');
+        
+        setState(() {
+          _isLoading = false;
+          _hasInitialLoaded = true;
+          _error = '需要登入才能獲取最新課表';
+        });
+        
+        // 顯示登入提示
+        if (mounted && forceRefresh) {
+          _showLoginPrompt();
+        }
+        return;
+      }
+      
       debugPrint('[CourseTable] 從 API 獲取課表...');
       
-      // 2. 從 API 獲取最新數據
+      // 3. 從 API 獲取最新數據
       final apiService = context.read<NtutApiService>();
       final courses = await apiService.getCourseTable(
         year: _selectedYear.toString(),
         semester: _selectedSemester,
       );
       
-      // 3. 保存到緩存
+      // 4. 保存到緩存
       if (_cacheBox != null) {
         await _cacheBox!.put(cacheKey, courses);
         await _cacheBox!.put(cacheTimeKey, DateTime.now().toIso8601String());
