@@ -2,7 +2,9 @@ name: Flutter CI
 
 env:
   TZ: Asia/Taipei
-  SIGN_ON_PUSH: 'false'
+  SIGN_ON_PUSH_ANDROID: 'true'
+  SIGN_ON_PUSH_IOS: 'false'
+
 
 on:
   push:
@@ -62,7 +64,7 @@ jobs:
         
       - name: Set Android Signing Flag
         run: |
-          if [[ "${{ secrets.ANDROID_SIGNING_KEY_BASE64 }}" != "" && ( ("${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.use_signing }}" == "true") || ("${{ github.event_name }}" != "workflow_dispatch" && "${{ env.SIGN_ON_PUSH }}" == "true") ) ]]; then
+          if [[ "${{ secrets.ANDROID_SIGNING_KEY_BASE64 }}" != "" && ( ("${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.use_signing }}" == "true") || ("${{ github.event_name }}" != "workflow_dispatch" && "${{ env.SIGN_ON_PUSH_ANDROID }}" == "true") ) ]]; then
             echo "SHOULD_SIGN_ANDROID=true" >> $GITHUB_ENV
           else
             echo "SHOULD_SIGN_ANDROID=false" >> $GITHUB_ENV
@@ -86,6 +88,7 @@ jobs:
         run: flutter build appbundle --release
 
       - name: Deploy to Closed Beta
+        continue-on-error: true
         if: env.SHOULD_SIGN_ANDROID == 'true'
         uses: r0adkll/upload-google-play@v1
         with:
@@ -93,6 +96,7 @@ jobs:
             packageName: club.ntut.npc.tat2
             releaseFiles: build/app/outputs/bundle/release/app-release.aab
             track: internal
+            status: draft
 
       - name: Build Android APK
         run: flutter build apk --debug
@@ -139,7 +143,7 @@ jobs:
         
       - name: Set iOS Signing Flag
         run: |
-          if [[ "${{ secrets.IOS_BUILD_CERTIFICATE_BASE64 }}" != "" && ( ("${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.use_signing }}" == "true") || ("${{ github.event_name }}" != "workflow_dispatch" && "${{ env.SIGN_ON_PUSH }}" == "true") ) ]]; then
+          if [[ "${{ secrets.IOS_BUILD_CERTIFICATE_BASE64 }}" != "" && ( ("${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.use_signing }}" == "true") || ("${{ github.event_name }}" != "workflow_dispatch" && "${{ env.SIGN_ON_PUSH_IOS }}" == "true") ) ]]; then
             echo "SHOULD_SIGN_IOS=true" >> $GITHUB_ENV
           else
             echo "SHOULD_SIGN_IOS=false" >> $GITHUB_ENV
@@ -174,4 +178,3 @@ jobs:
         with:
           name: release-ipa-${{ env.BUILD_TIMESTAMP }}
           path: build/ios/ipa/*.ipa
-
