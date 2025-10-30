@@ -64,7 +64,7 @@ jobs:
 
       - name: update build numbers
         run: |
-          dart .\scripts\update_version.dart
+          dart ./scripts/update_version.dart
 
       - name: Set Android Signing Flag
         run: |
@@ -100,7 +100,6 @@ jobs:
             packageName: club.ntut.npc.tat2
             releaseFiles: build/app/outputs/bundle/release/app-release.aab
             track: internal
-#            status: draft
 
       - name: Build Android APK
         run: flutter build apk --debug
@@ -147,7 +146,7 @@ jobs:
 
       - name: update build numbers
         run: |
-          dart .\scripts\update_version.dart
+          dart ./scripts/update_version.dart
 
       - name: Set iOS Signing Flag
         run: |
