@@ -1,6 +1,8 @@
 import 'dart:io';
 
-void main() async {
+void main(List<String> args) async {
+  final isCI = args.contains('--ci');
+
 
   final result = await Process.run('git', ['rev-list', '--count', 'HEAD']);
   if (result.exitCode != 0) {
@@ -14,6 +16,9 @@ void main() async {
 
 
   String baseVersion = '1.0.0';
+  if (!isCI) {
+    baseVersion = '$baseVersion-local';
+  }
   RegExp versionRegex = RegExp(r'^version: .*$', multiLine: true);
   String newVersionLine = 'version: $baseVersion+$commitCount';
 

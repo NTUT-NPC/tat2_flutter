@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "club.ntut.npc.tat2"
-    compileSdk = 35
+    compileSdkVersion = 35
     ndkVersion = "26.1.10909125"
 
     def keystoreProperties = new Properties()
