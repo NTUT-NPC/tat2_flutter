@@ -18,6 +18,7 @@ class NtutCourseService {
   static const String userAgent = 'Direk ios App';
 
   String? _courseJSessionId;
+  bool _isTransferring = false; // 防止並發 SSO 轉移
 
   NtutCourseService({required NtutAuthService authService})
       : _authService = authService {
@@ -45,6 +46,21 @@ class NtutCourseService {
       throw Exception('請先登入');
     }
 
+    // 防止並發 SSO 轉移
+    if (_isTransferring) {
+      print('[NTUT Course] SSO 轉移正在進行中，等待完成...');
+      // 等待當前轉移完成
+      while (_isTransferring) {
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+      // 如果轉移成功，直接返回
+      if (_courseJSessionId != null) {
+        print('[NTUT Course] 使用已完成的 SSO 轉移結果');
+        return true;
+      }
+    }
+
+    _isTransferring = true;
     try {
       print('[NTUT Course] 開始 SSO 轉移到課程系統');
 
@@ -120,7 +136,7 @@ class NtutCourseService {
       
       final courseSystemUri = Uri.parse(courseBaseUrl);
       final courseCookies = await _cookieJar.loadForRequest(courseSystemUri);
-      
+
       _courseJSessionId = null;
       for (final cookie in courseCookies) {
         if (cookie.name == 'JSESSIONID') {
@@ -129,12 +145,12 @@ class NtutCourseService {
           break;
         }
       }
-      
+     
       if (_courseJSessionId == null) {
         print('[NTUT Course] 未獲取到課程系統 JSESSIONID');
         return false;
       }
-
+      
       return true;
     } catch (e) {
       print('[NTUT Course] SSO 轉移失敗: $e');
@@ -191,10 +207,6 @@ class NtutCourseService {
       if (response.statusCode == 200) {
         final htmlContent = response.data.toString();
         
-        if (htmlContent.contains('帳號') && htmlContent.contains('密碼')) {
-          throw Exception('Session 已失效，請重新登入');
-        }
-        
         try {
           final document = html_parser.parse(htmlContent);
           final List<Map<String, dynamic>> semesters = [];
@@ -204,8 +216,7 @@ class NtutCourseService {
           print('[NTUT Course] 找到 ${tables.length} 個 table 元素');
           
           if (tables.isEmpty) {
-            print('[NTUT Course] HTML 內容沒有 table，可能是頁面格式錯誤');
-            print('[NTUT Course] HTML 前 500 字元: ${htmlContent.substring(0, htmlContent.length > 500 ? 500 : htmlContent.length)}');
+            print('[NTUT Course] HTML 內容沒有 table');
             return [];
           }
           
@@ -305,10 +316,6 @@ class NtutCourseService {
 
       if (response.statusCode == 200) {
         final htmlContent = response.data.toString();
-        
-        if (htmlContent.contains('帳號') && htmlContent.contains('密碼')) {
-          throw Exception('Session 已失效，請重新登入');
-        }
         
         if (htmlContent.contains('姓名')) {
           final courses = _parseCourseTableHtml(htmlContent);
