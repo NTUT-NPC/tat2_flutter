@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../models/ap_tree_json.dart';
 import '../services/ntut_api_service.dart';
+import '../widgets/login_required_view.dart';
 import 'webview_page.dart';
 
 /// 校務系統頁面 - 完全參考 TAT 的實作
@@ -201,32 +202,15 @@ class _AdminSystemPageState extends State<AdminSystemPage> {
     }
 
     if (_errorMessage != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(
-                Icons.error_outline,
-                size: 64,
-                color: Colors.red,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                _errorMessage!,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 16),
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton.icon(
-                onPressed: _loadTree,
-                icon: const Icon(Icons.refresh),
-                label: const Text('重試'),
-              ),
-            ],
-          ),
-        ),
+      return LoginRequiredView(
+        featureName: '校務系統',
+        description: '訪客模式無法使用校務系統\n這是在線功能，需要登入後才能使用',
+        onLoginTap: () async {
+          final result = await Navigator.of(context).pushNamed('/login');
+          if (result == true && mounted) {
+            _loadTree();
+          }
+        },
       );
     }
 

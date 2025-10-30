@@ -10,17 +10,20 @@ enum AuthState {
   /// 未初始化
   unknown,
   
-  /// 離線模式（未登入，但可以使用本地緩存功能）
+  /// 訪客模式（未登入，可以使用本地緩存和離線功能）
+  guest,
+  
+  /// 離線模式（已登入但網路不可用或 Session 過期，使用緩存數據）
   offline,
   
   /// 正在登入
   loggingIn,
   
-  /// 已登入
+  /// 已登入且 Session 有效
   authenticated,
   
-  /// Session 已過期
-  expired,
+  /// Session 已過期（靜默重試中）
+  sessionExpired,
 }
 
 /// 認證管理器 - 統一管理所有學校的認證狀態
@@ -59,11 +62,17 @@ class AuthManager {
   /// 當前認證狀態
   AuthState get authState => _authState;
   
-  /// 是否已登入
+  /// 是否已登入（Session 有效）
   bool get isLoggedIn => _isLoggedIn && _adapter.isLoggedIn;
   
-  /// 是否為離線模式（未登入但可使用本地功能）
+  /// 是否為訪客模式（從未登入）
+  bool get isGuestMode => _authState == AuthState.guest;
+  
+  /// 是否為離線模式（已登入但 Session 失效，使用緩存）
   bool get isOfflineMode => _authState == AuthState.offline;
+  
+  /// 是否可以使用緩存數據（訪客模式或離線模式）
+  bool get canUseCachedData => isGuestMode || isOfflineMode || isLoggedIn;
 
   /// 當前憑證
   AuthCredential? get currentCredential => _currentCredential;
@@ -92,15 +101,15 @@ class AuthManager {
         _lastLoginTime = DateTime.fromMillisecondsSinceEpoch(lastLoginTimestamp);
       }
       
-      // 如果已登入，恢復憑證並檢查 session
+      // 如果曾經登入過，恢復憑證
       if (_isLoggedIn) {
         _currentCredential = await loadCredentials();
         
-        // 檢查 session 是否過期
+        // 檢查 session 是否可能過期
         if (isSessionLikelyExpired) {
-          debugPrint('[AuthManager] Session 可能已過期，設為離線模式');
+          debugPrint('[AuthManager] Session 可能已過期，設為離線模式（使用緩存）');
           _authState = AuthState.offline;
-          // 異步嘗試刷新，不阻塞初始化
+          // 靜默嘗試刷新，不阻塞用戶使用
           _tryAutoRefresh();
         } else {
           _authState = AuthState.authenticated;
@@ -109,8 +118,9 @@ class AuthManager {
           debugPrint('[AuthManager] 已恢復登入狀態: ${_currentCredential?.username}');
         }
       } else {
-        _authState = AuthState.offline;
-        debugPrint('[AuthManager] 初始化為離線模式');
+        // 從未登入過，進入訪客模式
+        _authState = AuthState.guest;
+        debugPrint('[AuthManager] 初始化為訪客模式');
       }
     } catch (e) {
       debugPrint('[AuthManager] 初始化失敗: $e');
@@ -199,13 +209,23 @@ class AuthManager {
         
         debugPrint('[AuthManager] 登入成功: ${credential.username}');
       } else {
-        _authState = AuthState.offline;
+        // 登入失敗，但不清除本地狀態，保持訪客/離線模式
+        if (_currentCredential == null) {
+          _authState = AuthState.guest;
+        } else {
+          _authState = AuthState.offline;
+        }
         debugPrint('[AuthManager] 登入失敗: ${result.message}');
       }
       
       return result;
     } catch (e) {
-      _authState = AuthState.offline;
+      // 登入異常，保持當前狀態
+      if (_currentCredential == null) {
+        _authState = AuthState.guest;
+      } else {
+        _authState = AuthState.offline;
+      }
       debugPrint('[AuthManager] 登入錯誤: $e');
       return AuthResult.failure(message: '登入錯誤: $e');
     }
@@ -245,8 +265,9 @@ class AuthManager {
         if (errorMsg.contains('connection') ||
             errorMsg.contains('host lookup') ||
             errorMsg.contains('network') ||
+            errorMsg.contains('timeout') ||
             errorMsg.contains('Socket')) {
-          debugPrint('[AuthManager] 網路連接失敗，保持離線模式');
+          debugPrint('[AuthManager] 網路連接失敗，保持離線模式（可使用緩存）');
           _authState = AuthState.offline;
         }
       }
@@ -307,10 +328,10 @@ class AuthManager {
     _autoRefreshTimer = null;
   }
 
-  /// 嘗試自動刷新 Session
+  /// 嘗試自動刷新 Session（靜默重試，不打斷用戶）
   Future<void> _tryAutoRefresh() async {
-    if (!_isLoggedIn || _currentCredential == null) {
-      debugPrint('[AuthManager] 未登入，跳過自動刷新');
+    if (_currentCredential == null) {
+      debugPrint('[AuthManager] 無憑證，跳過自動刷新');
       return;
     }
     
@@ -320,24 +341,35 @@ class AuthManager {
     }
     
     try {
-      debugPrint('[AuthManager] 嘗試自動刷新 Session');
+      debugPrint('[AuthManager] 靜默嘗試刷新 Session');
+      _authState = AuthState.sessionExpired; // 標記為刷新中
+      
       final result = await relogin();
       
       if (result.success) {
         debugPrint('[AuthManager] Session 自動刷新成功');
+        _authState = AuthState.authenticated;
       } else {
         debugPrint('[AuthManager] Session 自動刷新失敗: ${result.message}');
-        // 刷新失敗可能是網路問題，不強制登出
+        // 刷新失敗，進入離線模式（用戶可繼續使用緩存數據）
+        _authState = AuthState.offline;
       }
     } catch (e) {
       debugPrint('[AuthManager] Session 自動刷新異常: $e');
-      // 異常情況不強制登出，等待下次刷新或用戶操作觸發
+      // 異常情況進入離線模式，不強制登出，用戶可使用緩存
+      _authState = AuthState.offline;
     }
   }
 
   /// 登出
-  Future<void> logout({bool clearLocalCredentials = false}) async {
-    debugPrint('[AuthManager] 登出');
+  /// 
+  /// [clearLocalCredentials] 是否清除本地憑證（預設不清除，方便下次登入）
+  /// [clearCache] 是否清除緩存數據（預設不清除，訪客模式仍可查看）
+  Future<void> logout({
+    bool clearLocalCredentials = false,
+    bool clearCache = false,
+  }) async {
+    debugPrint('[AuthManager] 登出 (清除憑證: $clearLocalCredentials, 清除緩存: $clearCache)');
     
     // 停止自動刷新計時器
     _stopAutoRefreshTimer();
@@ -345,14 +377,21 @@ class AuthManager {
     await _adapter.logout();
     _isLoggedIn = false;
     _lastLoginTime = null;
-    _authState = AuthState.offline;
+    
+    // 登出後進入訪客模式（仍可使用緩存數據）
+    _authState = AuthState.guest;
     
     // 清除登入狀態
     await _saveLoginState();
     
     if (clearLocalCredentials) {
       await clearCredentials();
+      _currentCredential = null;
     }
+    
+    // 注意：不在這裡清除緩存，緩存由 CacheManager 統一管理
+    // 用戶可以在訪客模式下繼續查看緩存的課表、成績等
+    debugPrint('[AuthManager] 已登出，進入訪客模式');
   }
 
   /// 檢查 Session 是否有效

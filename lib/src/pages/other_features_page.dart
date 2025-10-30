@@ -372,15 +372,19 @@ class _OtherFeaturesPageState extends State<OtherFeaturesPage> {
           } else {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: const Text('沒有保存的帳號密碼，請重新登入'),
+                content: const Text('沒有保存的帳號密碼，請前往登入'),
                 backgroundColor: Theme.of(context).colorScheme.primary,
                 behavior: SnackBarBehavior.floating,
                 duration: const Duration(seconds: 2),
+                action: SnackBarAction(
+                  label: '登入',
+                  textColor: Colors.white,
+                  onPressed: () {
+                    Navigator.of(context).pushNamed('/login');
+                  },
+                ),
               ),
             );
-            if (context.mounted) {
-              Navigator.of(context).pushReplacementNamed('/login');
-            }
           }
         }
       } catch (e) {
@@ -421,6 +425,7 @@ class _OtherFeaturesPageState extends State<OtherFeaturesPage> {
       final authService = Provider.of<AuthService>(context, listen: false);
       await authService.logout();
       if (context.mounted) {
+        // 登出後跳轉到登入頁面
         Navigator.of(context).pushReplacementNamed('/login');
       }
     }

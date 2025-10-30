@@ -3,6 +3,7 @@ import 'package:flutter/gestures.dart';
 import 'package:provider/provider.dart';
 import '../../src/services/ntut_api_service.dart';
 import '../../src/services/auth_service.dart';
+import '../../src/providers/auth_provider_v2.dart';
 import '../../src/pages/home_page.dart';
 import '../../src/pages/privacy_policy_page.dart';
 import '../../src/pages/terms_of_service_page.dart';
@@ -68,22 +69,27 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final apiService = context.read<NtutApiService>();
-      final authService = context.read<AuthService>();
+      final username = _usernameController.text.trim();
+      final password = _passwordController.text;
+      
+      // 檢查是否為測試帳號 (test/password)，自動進入訪客模式
+      if (username == 'test' && password == 'password') {
+        debugPrint('[Login] 檢測到測試帳號，自動進入訪客模式');
+        await _handleGuestMode();
+        return;
+      }
+      
+      // 使用 AuthProviderV2 進行登入
+      final authProvider = context.read<AuthProviderV2>();
       
       // 登入
-      final result = await apiService.login(
-        _usernameController.text.trim(),
-        _passwordController.text,
+      final success = await authProvider.login(
+        username: username,
+        password: password,
+        rememberMe: true,
       );
 
-      if (result['success'] == true) {
-        // 保存帳號密碼
-        await authService.saveCredentials(
-          _usernameController.text.trim(),
-          _passwordController.text,
-        );
-        
+      if (success) {
         if (mounted) {
           // 檢查是否可以返回上一頁
           final canPop = Navigator.of(context).canPop();
@@ -102,7 +108,7 @@ class _LoginScreenState extends State<LoginScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(result['errorMsg'] ?? '登入失敗'),
+              content: Text(authProvider.error ?? '登入失敗'),
               backgroundColor: Colors.red,
             ),
           );
@@ -120,6 +126,33 @@ class _LoginScreenState extends State<LoginScreen> {
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  /// 處理訪客模式進入
+  Future<void> _handleGuestMode() async {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('已進入訪客模式，可查看緩存資料'),
+          backgroundColor: Theme.of(context).colorScheme.primary,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      
+      // 檢查是否可以返回上一頁
+      final canPop = Navigator.of(context).canPop();
+      
+      if (canPop) {
+        // 有上一頁，返回（不登入，保持訪客模式）
+        Navigator.of(context).pop(false);
+      } else {
+        // 沒有上一頁，導航到主頁（訪客模式）
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => const HomePage()),
+        );
       }
     }
   }
@@ -306,20 +339,29 @@ class _LoginScreenState extends State<LoginScreen> {
                             style: TextStyle(fontSize: 16),
                           ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
 
-                  // 說明文字
-                  Text(
-                    '使用北科大學生帳號密碼登入\n'
-                    '登入後會自動記住帳號密碼\n\n'
-                    '本服務為非官方應用，所有資訊僅供參考\n'
-                    '請以學校官方系統為準',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          height: 1.5,
+                  // 訪客模式按鈕
+                  OutlinedButton(
+                    onPressed: _isLoading ? null : _handleGuestMode,
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const SizedBox(width: 8),
+                        const Text(
+                          '以訪客模式瀏覽',
+                          style: TextStyle(fontSize: 16),
                         ),
+                      ],
+                    ),
                   ),
+
                 ],
               ),
             ),
