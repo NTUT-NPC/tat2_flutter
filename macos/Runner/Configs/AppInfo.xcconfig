@@ -8,7 +8,7 @@
 PRODUCT_NAME = qaq_flutter
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = tw.edu.ntut.qaq.qaqFlutter
+PRODUCT_BUNDLE_IDENTIFIER = club.ntut.npc.tat2.qaqFlutter
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2025 tw.edu.ntut.qaq. All rights reserved.
+PRODUCT_COPYRIGHT = Copyright © 2025 club.ntut.npc.tat2. All rights reserved.

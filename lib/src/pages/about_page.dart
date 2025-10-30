@@ -1,5 +1,9 @@
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import '../l10n/app_localizations.dart';
 import 'privacy_policy_page.dart';
@@ -16,13 +20,85 @@ class AboutPage extends StatefulWidget {
 class _AboutPageState extends State<AboutPage> {
   String _version = '';
   String _buildNumber = '';
-  
+  List<dynamic> _contributors = [];
+  bool _isLoadingContributors = true;
+  List<dynamic> _specialThanksContributors = [];
+  bool _isLoadingSpecialThanks = true;
+
+  // Repositories to feature in the "Special Thanks" section
+  final Map<String, String> _specialThanksRepos = {
+    'NEO-TAT/tat_flutter': '北科課表 APP 核心技術參考',
+    'gnehs/ntut-course-web': '北科課程爬蟲與網頁版參考',
+  };
+
   @override
   void initState() {
     super.initState();
     _loadVersionInfo();
+    _loadAllContributors();
   }
-  
+
+  Future<void> _loadAllContributors() async {
+    // Set loading states
+    setState(() {
+      _isLoadingContributors = true;
+      _isLoadingSpecialThanks = true;
+    });
+
+    // Fetch contributors for the main project
+    final mainContributorsFuture = _fetchContributors(
+        'https://api.github.com/repos/NTUT-NPC/tat2_flutter/contributors');
+
+    // Fetch contributors for all "Special Thanks" repositories concurrently
+    final specialThanksFutures = _specialThanksRepos.keys
+        .map((slug) => _fetchContributors(
+            'https://api.github.com/repos/$slug/contributors',
+            repoSlug: slug))
+        .toList();
+
+    // Process main project contributors
+    final mainContributors = await mainContributorsFuture;
+    if (mounted) {
+      setState(() {
+        _contributors = mainContributors;
+        _isLoadingContributors = false;
+      });
+    }
+
+    // Process "Special Thanks" contributors
+    final specialThanksResults = await Future.wait(specialThanksFutures);
+    if (mounted) {
+      setState(() {
+        _specialThanksContributors =
+            specialThanksResults.expand((result) => result).toList();
+        _isLoadingSpecialThanks = false;
+      });
+    }
+  }
+
+  Future<List<dynamic>> _fetchContributors(String url, {String? repoSlug}) async {
+    try {
+      final response =
+          await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
+      if (response.statusCode == 200) {
+        final contributors = json.decode(response.body) as List<dynamic>;
+        if (repoSlug != null) {
+          // Attach repository info for context
+          return contributors
+              .map((c) => {...c, 'repo_slug': repoSlug})
+              .toList();
+        }
+        return contributors;
+      } else {
+        debugPrint(
+            'Failed to load contributors from $url: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('Error fetching contributors from $url: $e');
+    }
+    return [];
+  }
+
   Future<void> _loadVersionInfo() async {
     final packageInfo = await PackageInfo.fromPlatform();
     setState(() {
@@ -42,7 +118,7 @@ class _AboutPageState extends State<AboutPage> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    final isDarkMode = theme.brightness == Brightness.dark;
+    // final isDarkMode = theme.brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(
@@ -63,7 +139,7 @@ class _AboutPageState extends State<AboutPage> {
             //   child: ClipRRect(
             //     borderRadius: BorderRadius.circular(20),
             //     child: Image.asset(
-            //       isDarkMode 
+            //       isDarkMode
             //         ? 'assets/images/splash-dark.png'
             //         : 'assets/images/splash.png',
             //       fit: BoxFit.contain,
@@ -93,29 +169,46 @@ class _AboutPageState extends State<AboutPage> {
 
             // 作者資訊
             _buildSectionTitle('貢獻者', theme),
-            _buildClickableCard(
-              icon: Icons.person,
-              title: 'changrun1',
-              subtitle: 'GitHub',
-              onTap: () => _launchUrl('https://github.com/changrun1'),
-            ),
+            if (_isLoadingContributors)
+              const Center(child: CircularProgressIndicator())
+            else
+              ..._contributors.map((contributor) {
+                return _buildClickableCard(
+                  title: contributor['login'],
+                  subtitle: 'GitHub',
+                  imageUrl: contributor['avatar_url'],
+                  onTap: () => _launchUrl(contributor['html_url']),
+                );
+              }).toList(),
+
+            const SizedBox(height: 24),
+
+            // Special Thanks Section
+            _buildSectionTitle('元老級貢獻者', theme),
+            if (_isLoadingSpecialThanks)
+              const Center(child: CircularProgressIndicator())
+            else
+              ..._specialThanksContributors.map((contributor) {
+                return _buildClickableCard(
+                  title: contributor['login'],
+                  subtitle: 'GitHub (${contributor['repo_slug']})',
+                  imageUrl: contributor['avatar_url'],
+                  onTap: () => _launchUrl(contributor['html_url']),
+                );
+              }).toList(),
 
             const SizedBox(height: 24),
 
             // 特別感謝
             _buildSectionTitle('特別感謝', theme),
-            _buildClickableCard(
-              icon: Icons.favorite,
-              title: 'NEO-TAT/tat_flutter',
-              subtitle: '北科課表 APP 核心技術參考',
-              onTap: () => _launchUrl('https://github.com/NEO-TAT/tat_flutter'),
-            ),
-            _buildClickableCard(
-              icon: Icons.favorite,
-              title: 'gnehs/ntut-course-web',
-              subtitle: '北科課程爬蟲與網頁版參考',
-              onTap: () => _launchUrl('https://github.com/gnehs/ntut-course-web'),
-            ),
+            ..._specialThanksRepos.entries.map((entry) {
+              return _buildClickableCard(
+                icon: Icons.favorite,
+                title: entry.key,
+                subtitle: entry.value,
+                onTap: () => _launchUrl('https://github.com/${entry.key}'),
+              );
+            }),
 
             const SizedBox(height: 24),
 
@@ -152,37 +245,12 @@ class _AboutPageState extends State<AboutPage> {
 
             // 開源資訊
             _buildSectionTitle('開源專案', theme),
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surface,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: Colors.grey.withOpacity(0.2),
-                  width: 1,
-                ),
-              ),
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.code, size: 20),
-                      SizedBox(width: 8),
-                      Text(
-                        '本專案尚未開源',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    '開發中，預計未來會在 GitHub 上公開',
-                    style: TextStyle(fontSize: 14, color: Colors.grey),
-                  ),
-                ],
-              ),
+            _buildClickableCard(
+              icon: Icons.code,
+              title: 'NTUT-NPC/tat2_flutter',
+              subtitle: 'TAT 2 原始碼',
+              onTap: () =>
+                  _launchUrl('https://github.com/NTUT-NPC/tat2_flutter'),
             ),
 
             const SizedBox(height: 40),
@@ -191,7 +259,7 @@ class _AboutPageState extends State<AboutPage> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Text(
-                '© 2025 TAT\n'
+                '© ${DateTime.now().year} TAT\n'
                 '僅供學習交流使用',
                 textAlign: TextAlign.center,
                 style: TextStyle(
@@ -225,15 +293,34 @@ class _AboutPageState extends State<AboutPage> {
   }
 
   Widget _buildClickableCard({
-    required IconData icon,
+    IconData? icon,
+    String? imageUrl,
     required String title,
     required String subtitle,
     required VoidCallback onTap,
   }) {
+    Widget leadingWidget;
+    if (imageUrl != null) {
+      leadingWidget = ClipOval(
+        child: Image.network(
+          imageUrl,
+          width: 40,
+          height: 40,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) =>
+              const Icon(Icons.person, color: Colors.grey),
+        ),
+      );
+    } else if (icon != null) {
+      leadingWidget = Icon(icon, color: Colors.grey[700]);
+    } else {
+      leadingWidget = const SizedBox(width: 40, height: 40); // Placeholder
+    }
+
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: ListTile(
-        leading: Icon(icon, color: Colors.grey[700]),
+        leading: leadingWidget,
         title: Text(
           title,
           style: const TextStyle(fontWeight: FontWeight.w500),

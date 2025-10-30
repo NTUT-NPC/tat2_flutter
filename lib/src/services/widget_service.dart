@@ -9,7 +9,7 @@ import 'package:path_provider/path_provider.dart';
 /// 桌面小工具服務
 /// 負責與 Android 桌面小工具通信，更新課表截圖
 class WidgetService {
-  static const MethodChannel _channel = MethodChannel('org.ntut.qaq/widget');
+  static const MethodChannel _channel = MethodChannel('club.ntut.npc.tat2/widget');
 
   /// 檢查是否有小工具存在
   static Future<bool> hasWidget() async {
