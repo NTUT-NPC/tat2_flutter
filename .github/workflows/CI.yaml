@@ -61,7 +61,11 @@ jobs:
 
       - name: Install dependencies
         run: flutter pub get
-        
+
+      - name: update build numbers
+        run: |
+          dart .\scripts\update_version.dart
+
       - name: Set Android Signing Flag
         run: |
           if [[ "${{ secrets.ANDROID_SIGNING_KEY_BASE64 }}" != "" && ( ("${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.use_signing }}" == "true") || ("${{ github.event_name }}" != "workflow_dispatch" && "${{ env.SIGN_ON_PUSH_ANDROID }}" == "true") ) ]]; then
@@ -140,7 +144,11 @@ jobs:
 
       - name: Install dependencies
         run: flutter pub get
-        
+
+      - name: update build numbers
+        run: |
+          dart .\scripts\update_version.dart
+
       - name: Set iOS Signing Flag
         run: |
           if [[ "${{ secrets.IOS_BUILD_CERTIFICATE_BASE64 }}" != "" && ( ("${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.use_signing }}" == "true") || ("${{ github.event_name }}" != "workflow_dispatch" && "${{ env.SIGN_ON_PUSH_IOS }}" == "true") ) ]]; then
