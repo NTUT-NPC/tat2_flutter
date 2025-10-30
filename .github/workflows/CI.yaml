@@ -92,7 +92,7 @@ jobs:
             serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_API_KEY_JSON }}
             packageName: club.ntut.npc.tat2
             releaseFiles: build/app/outputs/bundle/release/app-release.aab
-            track: qa
+            track: internal
 
       - name: Build Android APK
         run: flutter build apk --debug
