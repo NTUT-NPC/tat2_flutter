@@ -6,6 +6,7 @@ import '../services/credits_service.dart';
 import '../core/auth/auth_manager.dart';
 import '../widgets/graduation_settings_dialog.dart';
 import '../widgets/login_required_view.dart';
+import '../utils/language_utils.dart';
 
 /// 學分計算頁面（M3 設計，功能按照 TAT）
 class CreditsPage extends StatefulWidget {
@@ -45,9 +46,22 @@ class _CreditsPageState extends State<CreditsPage> {
       final authManager = context.read<AuthManager>();
       final creditsService = context.read<CreditsService>();
       
-      final studentId = authManager.currentCredential?.username;
+      // 先檢查是否已有憑證
+      String? studentId = authManager.currentCredential?.username;
+      
+      // 如果沒有憑證，嘗試自動登入
+      if (studentId == null) {
+        debugPrint('[CreditsPage] 無憑證，嘗試自動登入...');
+        final result = await authManager.tryAutoLogin();
+        if (result != null && result.success) {
+          studentId = authManager.currentCredential?.username;
+          debugPrint('[CreditsPage] 自動登入成功');
+        }
+      }
+      
       if (studentId == null) {
         if (!mounted) return;
+        debugPrint('[CreditsPage] 無法獲取學號');
         setState(() {
           _errorMessage = l10n.pleaseLoginFirst;
           _isLoading = false;
@@ -463,8 +477,9 @@ class _CreditsPageState extends State<CreditsPage> {
             itemCount: courses.length,
             itemBuilder: (context, index) {
               final course = courses[index];
+              final languageCode = LanguageUtils.getLanguageCode(context);
               return ListTile(
-                title: Text(course.nameZh),
+                title: Text(course.getLocalizedName(languageCode)),
                 subtitle: Text(course.openClass),
                 trailing: Text(l10n.creditsValue(course.credit.toInt())),
               );
@@ -757,23 +772,26 @@ class _CreditsPageState extends State<CreditsPage> {
                               ),
                         ),
                       ),
-                      ...dimensionCourses.map((course) => Padding(
-                            padding: const EdgeInsets.only(left: 16.0, bottom: 4.0),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    course.nameZh,
-                                    style: Theme.of(context).textTheme.bodyMedium,
-                                  ),
+                      ...dimensionCourses.map((course) {
+                        final languageCode = LanguageUtils.getLanguageCode(context);
+                        return Padding(
+                          padding: const EdgeInsets.only(left: 16.0, bottom: 4.0),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  course.getLocalizedName(languageCode),
+                                  style: Theme.of(context).textTheme.bodyMedium,
                                 ),
-                                Text(
-                                  l10n.creditsValue(course.credit.toInt()),
-                                  style: Theme.of(context).textTheme.bodySmall,
-                                ),
-                              ],
-                            ),
-                          )).toList(),
+                              ),
+                              Text(
+                                l10n.creditsValue(course.credit.toInt()),
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
                       const Divider(),
                     ],
                   );
@@ -890,8 +908,9 @@ class _CreditsPageState extends State<CreditsPage> {
             itemCount: courses.length,
             itemBuilder: (context, index) {
               final course = courses[index];
+              final languageCode = LanguageUtils.getLanguageCode(context);
               return ListTile(
-                title: Text(course.nameZh),
+                title: Text(course.getLocalizedName(languageCode)),
                 subtitle: Text(course.openClass),
                 trailing: Text(l10n.creditsValue(course.credit.toInt())),
               );

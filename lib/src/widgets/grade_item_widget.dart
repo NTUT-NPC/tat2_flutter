@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/grade.dart';
 import '../l10n/app_localizations.dart';
+import '../helpers/course_data_helper.dart';
 
 /// 單筆成績項目 Widget
 class GradeItemWidget extends StatelessWidget {
@@ -73,7 +74,7 @@ class GradeItemWidget extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    grade.courseName,
+                    CourseDataHelper.getGradeLocalizedName(context, grade),
                     style: Theme.of(context).textTheme.bodyLarge,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,

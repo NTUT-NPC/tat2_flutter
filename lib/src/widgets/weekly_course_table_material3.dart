@@ -5,6 +5,7 @@ import 'package:auto_size_text/auto_size_text.dart';
 import '../services/course_color_service.dart';
 import '../services/theme_settings_service.dart';
 import '../l10n/app_localizations.dart';
+import '../helpers/course_data_helper.dart';
 
 /// 週課表組件 - Material 3 風格（懸浮卡片設計）
 /// 
@@ -639,7 +640,7 @@ class _WeeklyCourseTableMaterial3State extends State<WeeklyCourseTableMaterial3>
   Widget _buildFloatingCourseCard(BuildContext context, _MergedCourse merged) {
     final course = merged.course;
     final courseId = course['courseId'] ?? '';
-    final courseName = course['courseName'] ?? '';
+    final courseName = CourseDataHelper.getLocalizedCourseName(context, course);
     final classroom = course['classroom'] ?? '';
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final seedColor = Theme.of(context).colorScheme.primary;

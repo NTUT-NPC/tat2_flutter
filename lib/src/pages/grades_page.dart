@@ -47,37 +47,17 @@ class _GradesPageState extends State<GradesPage> with TickerProviderStateMixin {
 
     try {
       final authProvider = context.read<AuthProviderV2>();
-      
-      // 檢查是否已登入
-      if (!authProvider.isLoggedIn) {
-        // 嘗試自動登入
-        final loginSuccess = await authProvider.tryAutoLogin();
-        
-        if (!loginSuccess) {
-          setState(() {
-            _errorMessage = 'needLogin';
-            _isLoading = false;
-          });
-          // 不彈出對話框，直接顯示 LoginRequiredView
-          return;
-        }
-      }
-      
-      // 使用 Provider 中的共享實例
-      final ntutApi = context.read<NtutApiService>();
-      _gradesService = GradesService(
-        ntutApi: ntutApi,
-      );
-      
       final authService = context.read<AuthService>();
+      
+      // 先從 AuthService 獲取保存的憑證
       final credentials = await authService.getSavedCredentials();
       
+      // 如果沒有保存的憑證，顯示登入提示
       if (credentials == null) {
         setState(() {
           _errorMessage = 'needLogin';
           _isLoading = false;
         });
-        // 不彈出對話框，直接顯示 LoginRequiredView
         return;
       }
       
@@ -90,8 +70,31 @@ class _GradesPageState extends State<GradesPage> with TickerProviderStateMixin {
         });
         return;
       }
+      
+      // 檢查是否已登入（如果已登入就不需要再次嘗試）
+      if (!authProvider.isLoggedIn) {
+        debugPrint('[GradesPage] 未登入，嘗試自動登入...');
+        // 嘗試自動登入
+        final loginSuccess = await authProvider.tryAutoLogin();
+        
+        if (!loginSuccess) {
+          debugPrint('[GradesPage] 自動登入失敗');
+          setState(() {
+            _errorMessage = 'needLogin';
+            _isLoading = false;
+          });
+          return;
+        }
+        debugPrint('[GradesPage] 自動登入成功');
+      }
+      
+      // 使用 Provider 中的共享實例
+      final ntutApi = context.read<NtutApiService>();
+      _gradesService = GradesService(
+        ntutApi: ntutApi,
+      );
 
-      // 2. 從緩存或 NTUT API 獲取成績
+      // 從緩存或 NTUT API 獲取成績
       final grades = await _gradesService.getGrades(
         studentId: studentId,
         forceRefresh: forceRefresh, // 根據參數決定是否強制刷新

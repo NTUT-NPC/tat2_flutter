@@ -5,6 +5,7 @@ import 'package:auto_size_text/auto_size_text.dart';
 import '../services/course_color_service.dart';
 import '../services/theme_settings_service.dart';
 import '../l10n/app_localizations.dart';
+import '../helpers/course_data_helper.dart';
 
 /// 週課表組件 - 經典風格（表格式、緊湊佈局）
 /// 
@@ -438,7 +439,7 @@ class _WeeklyCourseTableClassicState extends State<WeeklyCourseTableClassic> {
   
   Widget _buildCourseCard(BuildContext context, Map<String, dynamic> course) {
     final courseId = course['courseId'] ?? '';
-    final courseName = course['courseName'] ?? '';
+    final courseName = CourseDataHelper.getLocalizedCourseName(context, course);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final seedColor = Theme.of(context).colorScheme.primary;
     

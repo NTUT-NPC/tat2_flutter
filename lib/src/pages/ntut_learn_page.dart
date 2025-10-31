@@ -9,6 +9,7 @@ import '../services/badge_service.dart';
 import '../widgets/login_required_view.dart';
 import 'ischool_plus/announcement_list_page.dart';
 import 'ischool_plus/course_files_page.dart';
+import '../helpers/course_data_helper.dart';
 
 /// 北科i學園頁面
 class NtutLearnPage extends StatefulWidget {
@@ -391,7 +392,13 @@ class _NtutLearnPageState extends State<NtutLearnPage> {
       itemCount: _courses.length,
       itemBuilder: (context, index) {
         final course = _courses[index];
-        final courseName = course['courseName'] as String? ?? '未知課程';
+        
+        // 調試：檢查課程數據結構
+        if (index == 0) {
+          print('[NtutLearn] 第一門課程數據: courseNameZh=${course['courseNameZh']}, courseNameEn=${course['courseNameEn']}, courseName=${course['courseName']}');
+        }
+        
+        final courseName = CourseDataHelper.getLocalizedCourseName(context, course);
         final courseId = course['courseId'] as String? ?? '';
         
         // 如果沒有 courseId 或是 NO_ID 開頭（班會課等特殊課程），跳過這個課程

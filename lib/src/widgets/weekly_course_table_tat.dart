@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../services/course_color_service.dart';
 import '../services/theme_settings_service.dart';
 import '../l10n/app_localizations.dart';
+import '../helpers/course_data_helper.dart';
 
 /// 週課表組件 - TAT 傳統風格
 /// 
@@ -264,6 +265,9 @@ class _WeeklyCourseTableTatState extends State<WeeklyCourseTableTat> {
         ? colorScheme.surface
         : colorScheme.surfaceContainerHighest.withOpacity(0.3);
     
+    // 使用固定的中文星期來查找課程（因為 courseGrid 的 key 使用中文）
+    const weekDaysForLookup = ['一', '二', '三', '四', '五'];
+    
     return Container(
       color: bgColor,
       height: courseHeight,
@@ -285,14 +289,18 @@ class _WeeklyCourseTableTatState extends State<WeeklyCourseTableTat> {
             ),
           ),
           // 每天的課程
-          ..._getWeekDays(context).map((day) {
+          ...weekDaysForLookup.asMap().entries.map((entry) {
+            final dayIndex = entry.key;
+            final day = entry.value;
             final key = '$day-${sectionLabels[sectionIndex]}';
             final coursesInSlot = courseGrid[key] ?? [];
             
             return Expanded(
               child: coursesInSlot.isEmpty
                   ? const SizedBox.expand()  // 保持格子大小，確保可以點擊
-                  : _buildCourseCard(context, coursesInSlot.first),
+                  : SizedBox.expand(
+                      child: _buildCourseCard(context, coursesInSlot.first),
+                    ),
             );
           }),
         ],
@@ -303,7 +311,7 @@ class _WeeklyCourseTableTatState extends State<WeeklyCourseTableTat> {
   /// 構建課程卡片（TAT 風格）
   Widget _buildCourseCard(BuildContext context, Map<String, dynamic> course) {
     final courseId = course['courseId'] ?? '';
-    final courseName = course['courseName'] ?? '';
+    final courseName = CourseDataHelper.getLocalizedCourseName(context, course);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final seedColor = Theme.of(context).colorScheme.primary;
     
@@ -399,7 +407,7 @@ class _WeeklyCourseTableTatState extends State<WeeklyCourseTableTat> {
   
   /// 顯示顏色選擇器（支援三種配色風格）
   void _showColorPicker(BuildContext context, Map<String, dynamic> course) {
-    final courseName = course['courseName'] ?? '';
+    final courseName = CourseDataHelper.getLocalizedCourseName(context, course);
     final courseId = course['courseId'] ?? '';
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final seedColor = Theme.of(context).colorScheme.primary;

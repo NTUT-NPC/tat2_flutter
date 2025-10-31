@@ -232,10 +232,15 @@ class CreditsService {
         cachedCount++;
       }
 
+      // 調試：檢查第一筆成績數據
+      if (processedCount == 1) {
+        debugPrint('[CreditsService] 第一筆成績: courseId=${grade.courseId}, courseNameZh=${grade.courseNameZh}, courseNameEn=${grade.courseNameEn}, courseName=${grade.courseName}');
+      }
+      
       final courseCredit = CourseCreditInfo(
         courseId: grade.courseId,
-        nameZh: grade.courseName,
-        nameEn: grade.courseName, // QAQ 目前沒有英文名稱
+        nameZh: grade.courseNameZh ?? grade.courseName,
+        nameEn: grade.courseNameEn ?? '',
         score: scoreStr,
         credit: grade.credits ?? 0,
         openClass: openClass,
