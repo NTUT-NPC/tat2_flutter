@@ -179,7 +179,7 @@ jobs:
 
       - name: Build iOS IPA (Signed)
         if: env.SHOULD_SIGN_IOS == 'true'
-        run: flutter build ipa --release
+        run: flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
 
       - name: Build iOS IPA (Unsigned)
         if: env.SHOULD_SIGN_IOS == 'false'
