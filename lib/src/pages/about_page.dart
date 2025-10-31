@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../l10n/app_localizations.dart';
 import 'privacy_policy_page.dart';
 import 'terms_of_service_page.dart';
@@ -24,6 +25,13 @@ class _AboutPageState extends State<AboutPage> {
   bool _isLoadingContributors = true;
   List<dynamic> _specialThanksContributors = [];
   bool _isLoadingSpecialThanks = true;
+  
+  // 緩存相關常量
+  static const String _cacheKeyMainContributors = 'main_contributors_cache';
+  static const String _cacheKeyMainTimestamp = 'main_contributors_timestamp';
+  static const String _cacheKeySpecialThanks = 'special_thanks_cache';
+  static const String _cacheKeySpecialTimestamp = 'special_thanks_timestamp';
+  static const Duration _cacheDuration = Duration(hours: 24); // 緩存 24 小時
 
   // Repositories to feature in the "Special Thanks" section
   Map<String, String> _getSpecialThanksRepos(BuildContext context) {
@@ -48,35 +56,136 @@ class _AboutPageState extends State<AboutPage> {
       _isLoadingSpecialThanks = true;
     });
 
-    // Fetch contributors for the main project
-    final mainContributorsFuture = _fetchContributors(
-        'https://api.github.com/repos/NTUT-NPC/tat2_flutter/contributors');
+    final prefs = await SharedPreferences.getInstance();
 
-    // Fetch contributors for all "Special Thanks" repositories concurrently
-    final specialThanksRepos = _getSpecialThanksRepos(context);
-    final specialThanksFutures = specialThanksRepos.keys
-        .map((slug) => _fetchContributors(
-            'https://api.github.com/repos/$slug/contributors',
-            repoSlug: slug))
-        .toList();
+    // 嘗試從緩存加載主項目貢獻者
+    final cachedMainContributors = await _loadFromCache(
+      prefs,
+      _cacheKeyMainContributors,
+      _cacheKeyMainTimestamp,
+    );
 
-    // Process main project contributors
-    final mainContributors = await mainContributorsFuture;
-    if (mounted) {
-      setState(() {
-        _contributors = mainContributors;
-        _isLoadingContributors = false;
-      });
+    if (cachedMainContributors != null) {
+      // 使用緩存數據
+      if (mounted) {
+        setState(() {
+          _contributors = cachedMainContributors;
+          _isLoadingContributors = false;
+        });
+      }
+    } else {
+      // 從 API 獲取主項目貢獻者
+      final mainContributors = await _fetchContributors(
+          'https://api.github.com/repos/NTUT-NPC/tat2_flutter/contributors');
+      
+      if (mainContributors.isNotEmpty) {
+        await _saveToCache(
+          prefs,
+          _cacheKeyMainContributors,
+          _cacheKeyMainTimestamp,
+          mainContributors,
+        );
+      }
+      
+      if (mounted) {
+        setState(() {
+          _contributors = mainContributors;
+          _isLoadingContributors = false;
+        });
+      }
     }
 
-    // Process "Special Thanks" contributors
-    final specialThanksResults = await Future.wait(specialThanksFutures);
-    if (mounted) {
-      setState(() {
-        _specialThanksContributors =
-            specialThanksResults.expand((result) => result).toList();
-        _isLoadingSpecialThanks = false;
-      });
+    // 嘗試從緩存加載特別感謝貢獻者
+    final cachedSpecialThanks = await _loadFromCache(
+      prefs,
+      _cacheKeySpecialThanks,
+      _cacheKeySpecialTimestamp,
+    );
+
+    if (cachedSpecialThanks != null) {
+      // 使用緩存數據
+      if (mounted) {
+        setState(() {
+          _specialThanksContributors = cachedSpecialThanks;
+          _isLoadingSpecialThanks = false;
+        });
+      }
+    } else {
+      // 從 API 獲取特別感謝貢獻者
+      final specialThanksRepos = _getSpecialThanksRepos(context);
+      final specialThanksFutures = specialThanksRepos.keys
+          .map((slug) => _fetchContributors(
+              'https://api.github.com/repos/$slug/contributors',
+              repoSlug: slug))
+          .toList();
+
+      final specialThanksResults = await Future.wait(specialThanksFutures);
+      final allSpecialThanks =
+          specialThanksResults.expand((result) => result).toList();
+
+      if (allSpecialThanks.isNotEmpty) {
+        await _saveToCache(
+          prefs,
+          _cacheKeySpecialThanks,
+          _cacheKeySpecialTimestamp,
+          allSpecialThanks,
+        );
+      }
+
+      if (mounted) {
+        setState(() {
+          _specialThanksContributors = allSpecialThanks;
+          _isLoadingSpecialThanks = false;
+        });
+      }
+    }
+  }
+
+  /// 從緩存加載數據
+  Future<List<dynamic>?> _loadFromCache(
+    SharedPreferences prefs,
+    String cacheKey,
+    String timestampKey,
+  ) async {
+    try {
+      final timestampStr = prefs.getString(timestampKey);
+      if (timestampStr == null) return null;
+
+      final timestamp = DateTime.parse(timestampStr);
+      final now = DateTime.now();
+
+      // 檢查緩存是否過期
+      if (now.difference(timestamp) > _cacheDuration) {
+        debugPrint('Cache expired for $cacheKey');
+        return null;
+      }
+
+      final cachedData = prefs.getString(cacheKey);
+      if (cachedData == null) return null;
+
+      final decoded = json.decode(cachedData) as List<dynamic>;
+      debugPrint('Loaded ${decoded.length} items from cache: $cacheKey');
+      return decoded;
+    } catch (e) {
+      debugPrint('Error loading cache for $cacheKey: $e');
+      return null;
+    }
+  }
+
+  /// 保存數據到緩存
+  Future<void> _saveToCache(
+    SharedPreferences prefs,
+    String cacheKey,
+    String timestampKey,
+    List<dynamic> data,
+  ) async {
+    try {
+      final encoded = json.encode(data);
+      await prefs.setString(cacheKey, encoded);
+      await prefs.setString(timestampKey, DateTime.now().toIso8601String());
+      debugPrint('Saved ${data.length} items to cache: $cacheKey');
+    } catch (e) {
+      debugPrint('Error saving cache for $cacheKey: $e');
     }
   }
 
