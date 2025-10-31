@@ -179,6 +179,8 @@ jobs:
 
       - name: Build iOS IPA (Signed)
         if: env.SHOULD_SIGN_IOS == 'true'
+        env:
+          APPLE_TEAM_ID: ${{ secrets.IOS_APPLE_TEAM_ID }}
         run: flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
 
       - name: Build iOS IPA (Unsigned)
