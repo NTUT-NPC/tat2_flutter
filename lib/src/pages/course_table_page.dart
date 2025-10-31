@@ -8,6 +8,7 @@ import '../services/course_color_service.dart';
 import '../services/widget_service.dart' hide debugPrint; // 導入 Widget 服務,但隱藏 debugPrint 避免衝突
 import '../widgets/weekly_course_table.dart';
 import '../widgets/login_required_view.dart';
+import '../l10n/app_localizations.dart';
 import 'course_syllabus_page.dart';
 
 class CourseTablePage extends StatefulWidget {
@@ -152,7 +153,7 @@ class _CourseTablePageState extends State<CourseTablePage> {
     if (_courses.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('沒有課程數據，無法設為小工具'),
+          content: Text(AppLocalizations.of(context).noCourseData),
           backgroundColor: Theme.of(context).colorScheme.primary,
           behavior: SnackBarBehavior.floating,
           duration: const Duration(seconds: 2),
@@ -166,13 +167,13 @@ class _CourseTablePageState extends State<CourseTablePage> {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (context) => const AlertDialog(
+        builder: (context) => AlertDialog(
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 16),
-              Text('正在生成小工具...'),
+              const CircularProgressIndicator(),
+              const SizedBox(height: 16),
+              Text(AppLocalizations.of(context).generatingWidget),
             ],
           ),
         ),
@@ -191,7 +192,7 @@ class _CourseTablePageState extends State<CourseTablePage> {
         // 顯示成功訊息
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('小工具已更新！請到桌面查看'),
+            content: Text(AppLocalizations.of(context).widgetUpdated),
             backgroundColor: Theme.of(context).colorScheme.primary,
             behavior: SnackBarBehavior.floating,
             duration: const Duration(seconds: 3),
@@ -208,7 +209,7 @@ class _CourseTablePageState extends State<CourseTablePage> {
         // 顯示錯誤訊息
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('設為小工具失敗: $e'),
+            content: Text(AppLocalizations.of(context).widgetUpdateFailed(e.toString())),
             backgroundColor: Colors.red,
           ),
         );
@@ -298,7 +299,7 @@ class _CourseTablePageState extends State<CourseTablePage> {
               setState(() {
                 _isLoading = false;
                 _hasInitialLoaded = true;
-                _error = '無法獲取可用學期列表';
+                _error = AppLocalizations.of(context).cannotGetSemesterList;
                 _availableSemesters = [];
                 _courses = [];
               });
@@ -306,9 +307,9 @@ class _CourseTablePageState extends State<CourseTablePage> {
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: const Text('無法獲取學期列表，請稍後重試'),
+                    content: Text(AppLocalizations.of(context).cannotGetSemesterListRetry),
                     action: SnackBarAction(
-                      label: '重試',
+                      label: AppLocalizations.of(context).retry,
                       onPressed: () => _loadAvailableSemesters(retryCount: 1),
                     ),
                   ),
@@ -327,9 +328,9 @@ class _CourseTablePageState extends State<CourseTablePage> {
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: const Text('更新失敗，使用緩存的學期列表'),
+                    content: Text(AppLocalizations.of(context).updateFailedUseCached),
                     action: SnackBarAction(
-                      label: '重試',
+                      label: AppLocalizations.of(context).retry,
                       onPressed: () => _loadAvailableSemesters(retryCount: 1),
                     ),
                   ),
@@ -351,7 +352,7 @@ class _CourseTablePageState extends State<CourseTablePage> {
         setState(() {
           _isLoading = false;
           _hasInitialLoaded = true;
-          _error = '無法獲取可用學期列表';
+          _error = AppLocalizations.of(context).cannotGetSemesterList;
           _availableSemesters = [];
           _courses = [];
         });
@@ -477,17 +478,17 @@ class _CourseTablePageState extends State<CourseTablePage> {
         // 其他錯誤顯示錯誤訊息，並提供重試按鈕
         setState(() {
           _isLoading = false;
-          _error = '載入學期列表失敗: $e';
+          _error = AppLocalizations.of(context).loadSemesterFailed(e.toString());
         });
         
         // 顯示重試提示
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('載入失敗: $e'),
+              content: Text(AppLocalizations.of(context).loadFailed2(e.toString())),
               duration: const Duration(seconds: 5),
               action: SnackBarAction(
-                label: '重試',
+                label: AppLocalizations.of(context).retry,
                 onPressed: () => _loadAvailableSemesters(retryCount: 1),
               ),
             ),
@@ -539,7 +540,7 @@ class _CourseTablePageState extends State<CourseTablePage> {
         setState(() {
           _isLoading = false;
           _hasInitialLoaded = true;
-          _error = '需要登入才能獲取最新課表';
+          _error = AppLocalizations.of(context).needLoginForLatest;
         });
         
         // 顯示登入提示
@@ -578,16 +579,16 @@ class _CourseTablePageState extends State<CourseTablePage> {
       // 如果網路請求失敗但有緩存，使用緩存
       if (_courses.isNotEmpty) {
         setState(() {
-          _error = '更新失敗,顯示緩存數據';
+          _error = AppLocalizations.of(context).updateFailedShowCached;
           _isLoading = false;
           _hasInitialLoaded = true; // 標記已完成初始載入
         });
         
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('更新失敗:${e.toString()}'),
+            content: Text(AppLocalizations.of(context).updateFailedMsg(e.toString())),
             action: SnackBarAction(
-              label: '重試',
+              label: AppLocalizations.of(context).retry,
               onPressed: () => _loadCourseTable(forceRefresh: true),
             ),
           ),
@@ -627,12 +628,12 @@ class _CourseTablePageState extends State<CourseTablePage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('需要登入'),
-        content: const Text('獲取最新課表需要登入。您可以選擇登入或繼續使用離線模式。'),
+        title: Text(AppLocalizations.of(context).needLogin),
+        content: Text(AppLocalizations.of(context).needLoginForCourseDesc),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('稍後登入'),
+            child: Text(AppLocalizations.of(context).loginLater),
           ),
           FilledButton(
             onPressed: () async {
@@ -644,7 +645,7 @@ class _CourseTablePageState extends State<CourseTablePage> {
                 _loadCourseTable(forceRefresh: true);
               }
             },
-            child: const Text('立即登入'),
+            child: Text(AppLocalizations.of(context).loginNow),
           ),
         ],
       ),
@@ -678,13 +679,14 @@ class _CourseTablePageState extends State<CourseTablePage> {
   String _formatCacheTime(DateTime time) {
     final now = DateTime.now();
     final difference = now.difference(time);
+    final l10n = AppLocalizations.of(context);
     
     if (difference.inMinutes < 1) {
-      return '剛剛';
+      return l10n.justNow;
     } else if (difference.inMinutes < 60) {
-      return '${difference.inMinutes} 分鐘前';
+      return '${difference.inMinutes} ${l10n.minutesAgo}';
     } else if (difference.inHours < 24) {
-      return '${difference.inHours} 小時前';
+      return '${difference.inHours} ${l10n.hoursAgo}';
     } else {
       return '${time.month}/${time.day} ${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
     }
@@ -756,22 +758,27 @@ class _CourseTablePageState extends State<CourseTablePage> {
           children: [
             // 只有有課號的課程才顯示課號
             if (!hasNoCourseId)
-              Text('課號：$courseId'),
-            Text('學分：${course['credits']} / 時數：${course['hours']}'),
+              Text(AppLocalizations.of(context).courseIdWithValue(courseId)),
+            Text(AppLocalizations.of(context).creditsAndHours(
+              course['credits']?.toString() ?? '',
+              course['hours']?.toString() ?? '',
+            )),
             if (course['instructor']?.isNotEmpty == true)
-              Text('教師：${course['instructor']}'),
+              Text(AppLocalizations.of(context).instructor(course['instructor'])),
             if (course['classroom']?.isNotEmpty == true)
-              Text('教室：${(course['classroom'] as String).replaceAll('\n', '、')}'),
+              Text(AppLocalizations.of(context).classroom(
+                (course['classroom'] as String).replaceAll('\n', '、')
+              )),
             if (timeInfo.isNotEmpty)
-              Text('時間：$timeInfo'),
+              Text(AppLocalizations.of(context).scheduleTime(timeInfo)),
             if (course['required']?.isNotEmpty == true)
-              Text('修別：${course['required']}'),
+              Text(AppLocalizations.of(context).courseType(course['required'])),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('關閉'),
+            child: Text(AppLocalizations.of(context).close),
           ),
           // 只有有課號的課程才顯示查看大綱按鈕
           if (!hasNoCourseId && courseId.isNotEmpty)
@@ -780,7 +787,7 @@ class _CourseTablePageState extends State<CourseTablePage> {
                 Navigator.pop(context);
                 _navigateToSyllabus(course);
               },
-              child: const Text('查看大綱'),
+              child: Text(AppLocalizations.of(context).viewSyllabus),
             ),
         ],
       ),
@@ -795,7 +802,7 @@ class _CourseTablePageState extends State<CourseTablePage> {
     if (syllabusNumber == null || teacherCode == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('此課程無課程大綱資料'),
+          content: Text(AppLocalizations.of(context).noSyllabus),
           backgroundColor: Theme.of(context).colorScheme.primary,
           behavior: SnackBarBehavior.floating,
           duration: const Duration(seconds: 2),
@@ -828,9 +835,9 @@ class _CourseTablePageState extends State<CourseTablePage> {
               padding: const EdgeInsets.all(16.0),
               child: Row(
                 children: [
-                  const Text(
-                    '選擇學期',
-                    style: TextStyle(
+                  Text(
+                    AppLocalizations.of(context).selectSemester,
+                    style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
@@ -883,12 +890,12 @@ class _CourseTablePageState extends State<CourseTablePage> {
       appBar: AppBar(
         title: Text(_availableSemesters.isNotEmpty 
           ? '$_selectedYear 學年度 第 $_selectedSemester 學期'
-          : '課表'),
+          : AppLocalizations.of(context).courseTable),
         actions: [
           // 統一功能選單
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),
-            tooltip: '更多功能',
+            tooltip: AppLocalizations.of(context).moreFeatures,
             onSelected: (value) {
               switch (value) {
                 case 'select_semester':
@@ -900,7 +907,7 @@ class _CourseTablePageState extends State<CourseTablePage> {
                 case 'refresh_table':
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: const Text('重新取得課表中...'),
+                      content: Text(AppLocalizations.of(context).refetchingCourseTable),
                       backgroundColor: Theme.of(context).colorScheme.primary,
                       behavior: SnackBarBehavior.floating,
                       duration: const Duration(seconds: 2),
@@ -911,7 +918,7 @@ class _CourseTablePageState extends State<CourseTablePage> {
                 case 'refresh_semesters':
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: const Text('重新取得學期列表中...'),
+                      content: Text(AppLocalizations.of(context).refetchingSemesterList),
                       backgroundColor: Theme.of(context).colorScheme.primary,
                       behavior: SnackBarBehavior.floating,
                       duration: const Duration(seconds: 2),
@@ -924,13 +931,13 @@ class _CourseTablePageState extends State<CourseTablePage> {
             itemBuilder: (context) => [
               // 選擇學期
               if (_availableSemesters.isNotEmpty)
-                const PopupMenuItem<String>(
+                PopupMenuItem<String>(
                   value: 'select_semester',
                   child: Row(
                     children: [
-                      Icon(Icons.calendar_today),
-                      SizedBox(width: 12),
-                      Text('選擇學期'),
+                      const Icon(Icons.calendar_today),
+                      const SizedBox(width: 12),
+                      Text(AppLocalizations.of(context).selectSemester),
                     ],
                   ),
                 ),
@@ -946,7 +953,7 @@ class _CourseTablePageState extends State<CourseTablePage> {
                     ),
                     const SizedBox(width: 12),
                     Text(
-                      '設為桌面小工具',
+                      AppLocalizations.of(context).setAsDesktopWidget,
                       style: TextStyle(
                         color: _courses.isEmpty ? Colors.grey : null,
                       ),
@@ -956,24 +963,24 @@ class _CourseTablePageState extends State<CourseTablePage> {
               ),
               const PopupMenuDivider(),
               // 刷新課表
-              const PopupMenuItem<String>(
+              PopupMenuItem<String>(
                 value: 'refresh_table',
                 child: Row(
                   children: [
-                    Icon(Icons.table_chart),
-                    SizedBox(width: 12),
-                    Text('刷新課表'),
+                    const Icon(Icons.table_chart),
+                    const SizedBox(width: 12),
+                    Text(AppLocalizations.of(context).refreshCourseTable),
                   ],
                 ),
               ),
               // 刷新學期列表
-              const PopupMenuItem<String>(
+              PopupMenuItem<String>(
                 value: 'refresh_semesters',
                 child: Row(
                   children: [
-                    Icon(Icons.calendar_month),
-                    SizedBox(width: 12),
-                    Text('刷新學期列表'),
+                    const Icon(Icons.calendar_month),
+                    const SizedBox(width: 12),
+                    Text(AppLocalizations.of(context).refreshSemesterList),
                   ],
                 ),
               ),
@@ -987,13 +994,13 @@ class _CourseTablePageState extends State<CourseTablePage> {
   
   Widget _buildBody() {
     if (_isLoading) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('載入中...'),
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            Text(AppLocalizations.of(context).loading),
           ],
         ),
       );
@@ -1004,8 +1011,8 @@ class _CourseTablePageState extends State<CourseTablePage> {
       if (_hasInitialLoaded) {
         // 已完成載入但沒有資料，提示登入
         return LoginRequiredView(
-          featureName: '課表',
-          description: '查看課表需要登入\n登入後系統會自動緩存課表數據',
+          featureName: AppLocalizations.of(context).courseTableFeatureName,
+          description: AppLocalizations.of(context).courseTableLoginDesc,
           onLoginTap: () async {
             final result = await Navigator.of(context).pushNamed('/login');
             // 登入成功後重新載入

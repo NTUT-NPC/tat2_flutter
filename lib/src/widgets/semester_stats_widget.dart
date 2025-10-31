@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/semester_grade_stats.dart';
+import '../l10n/app_localizations.dart';
 
 /// 學期統計 Widget（包含排名和操行成績）
 class SemesterStatsWidget extends StatelessWidget {
@@ -14,6 +15,7 @@ class SemesterStatsWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Card(
       margin: const EdgeInsets.all(16),
       elevation: 1,
@@ -38,7 +40,7 @@ class SemesterStatsWidget extends StatelessWidget {
               children: [
                 Expanded(
                   child: _StatItem(
-                    label: '平均成績',
+                    label: l10n.averageScore,
                     value: stats.averageScore.toStringAsFixed(2),
                     icon: Icons.star,
                     color: Theme.of(context).colorScheme.primary,
@@ -48,13 +50,13 @@ class SemesterStatsWidget extends StatelessWidget {
                 Expanded(
                   child: stats.performanceScore != null
                       ? _StatItem(
-                          label: '操行成績',
+                          label: l10n.performanceScore,
                           value: stats.performanceScore!.toStringAsFixed(0),
                           icon: Icons.person,
                           color: Theme.of(context).colorScheme.secondary,
                         )
                       : _StatItem(
-                          label: '操行成績',
+                          label: l10n.performanceScore,
                           value: '-',
                           icon: Icons.person,
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -69,7 +71,7 @@ class SemesterStatsWidget extends StatelessWidget {
               children: [
                 Expanded(
                   child: _StatItem(
-                    label: '修習學分',
+                    label: l10n.takenCredits,
                     value: stats.totalCredits.toStringAsFixed(1),
                     icon: Icons.book,
                     color: Theme.of(context).colorScheme.primary,
@@ -78,7 +80,7 @@ class SemesterStatsWidget extends StatelessWidget {
                 const SizedBox(width: 16),
                 Expanded(
                   child: _StatItem(
-                    label: '獲得學分',
+                    label: l10n.obtainedCredits,
                     value: stats.earnedCredits.toStringAsFixed(1),
                     icon: Icons.check_circle,
                     color: Theme.of(context).colorScheme.tertiary,
@@ -93,7 +95,7 @@ class SemesterStatsWidget extends StatelessWidget {
               const Divider(),
               const SizedBox(height: 12),
               Text(
-                '排名',
+                l10n.rank,
                 style: Theme.of(context).textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -108,7 +110,7 @@ class SemesterStatsWidget extends StatelessWidget {
                   if (stats.classRank != null)
                     Expanded(
                       child: _RankItem(
-                        label: '班排名',
+                        label: l10n.classRankFull,
                         rank: stats.classRank!,
                         icon: Icons.class_,
                       ),
@@ -118,7 +120,7 @@ class SemesterStatsWidget extends StatelessWidget {
                   if (stats.departmentRank != null)
                     Expanded(
                       child: _RankItem(
-                        label: '系排名',
+                        label: l10n.departmentRankFull,
                         rank: stats.departmentRank!,
                         icon: Icons.school,
                       ),
@@ -131,17 +133,6 @@ class SemesterStatsWidget extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  /// 根據平均成績（0-100分）返回顏色
-  Color _getScoreColor(BuildContext context, double score) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    
-    if (score >= 90) return isDark ? Colors.green.shade300 : Colors.green.shade700;
-    if (score >= 80) return isDark ? Colors.lightGreen.shade300 : Colors.lightGreen.shade700;
-    if (score >= 70) return isDark ? Colors.blue.shade300 : Colors.blue.shade700;
-    if (score >= 60) return isDark ? Colors.orange.shade300 : Colors.orange.shade700;
-    return isDark ? Colors.red.shade300 : Colors.red.shade700;
   }
 }
 

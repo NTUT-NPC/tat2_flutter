@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import 'package:auto_size_text/auto_size_text.dart';
 import '../services/course_color_service.dart';
 import '../services/theme_settings_service.dart';
+import '../l10n/app_localizations.dart';
+import '../helpers/course_data_helper.dart';
 
 /// 週課表組件 - 經典風格（表格式、緊湊佈局）
 /// 
@@ -54,7 +56,14 @@ class _WeeklyCourseTableClassicState extends State<WeeklyCourseTableClassic> {
     '21:15-22:05',
   ];
   
+  // 內部使用的星期標識（用於課表處理）
   static const List<String> weekDays = ['一', '二', '三', '四', '五'];
+  
+  // 獲取國際化的星期顯示名稱
+  List<String> _getWeekDayNames(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return [l10n.mon, l10n.tue, l10n.wed, l10n.thu, l10n.fri];
+  }
   
   @override
   void initState() {
@@ -101,12 +110,12 @@ class _WeeklyCourseTableClassicState extends State<WeeklyCourseTableClassic> {
   Widget build(BuildContext context) {
     // 如果課程為空，直接返回空視圖
     if (widget.courses.isEmpty) {
-      return const Center(
+      return Center(
         child: Padding(
-          padding: EdgeInsets.all(32.0),
+          padding: const EdgeInsets.all(32.0),
           child: Text(
-            '目前沒有課程',
-            style: TextStyle(fontSize: 16, color: Colors.grey),
+            AppLocalizations.of(context).noCoursesCurrently,
+            style: const TextStyle(fontSize: 16, color: Colors.grey),
           ),
         ),
       );
@@ -302,7 +311,7 @@ class _WeeklyCourseTableClassicState extends State<WeeklyCourseTableClassic> {
           Expanded(
             child: Center(
               child: Text(
-                '午休時間',
+                AppLocalizations.of(context).lunchBreak,
                 style: TextStyle(
                   fontSize: 12,
                   color: colorScheme.onSurfaceVariant,
@@ -343,13 +352,14 @@ class _WeeklyCourseTableClassicState extends State<WeeklyCourseTableClassic> {
             ),
           ),
           // 星期
-          ...weekDays.map((day) {
+          ..._getWeekDayNames(context).asMap().entries.map((entry) {
+            final dayName = entry.value;
             return SizedBox(
               width: dayWidth,
               height: 32,
               child: Center(
                 child: Text(
-                  '週$day',
+                  dayName,
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 14,
@@ -429,7 +439,7 @@ class _WeeklyCourseTableClassicState extends State<WeeklyCourseTableClassic> {
   
   Widget _buildCourseCard(BuildContext context, Map<String, dynamic> course) {
     final courseId = course['courseId'] ?? '';
-    final courseName = course['courseName'] ?? '';
+    final courseName = CourseDataHelper.getLocalizedCourseName(context, course);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final seedColor = Theme.of(context).colorScheme.primary;
     
@@ -685,7 +695,7 @@ class _WeeklyCourseTableClassicState extends State<WeeklyCourseTableClassic> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                '選擇課程顏色',
+                AppLocalizations.of(context).selectCourseColor,
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 6),
@@ -774,11 +784,11 @@ class _WeeklyCourseTableClassicState extends State<WeeklyCourseTableClassic> {
                 }
               },
               icon: const Icon(Icons.refresh_rounded),
-              label: const Text('重置'),
+              label: Text(AppLocalizations.of(context).reset),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('完成'),
+              child: Text(AppLocalizations.of(context).done),
             ),
           ],
         ),
@@ -795,7 +805,7 @@ class _WeeklyCourseTableClassicState extends State<WeeklyCourseTableClassic> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              '選擇課程顏色',
+              AppLocalizations.of(context).selectCourseColor,
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 6),
@@ -894,11 +904,11 @@ class _WeeklyCourseTableClassicState extends State<WeeklyCourseTableClassic> {
               }
             },
             icon: const Icon(Icons.refresh_rounded),
-            label: const Text('重置'),
+            label: Text(AppLocalizations.of(context).reset),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('完成'),
+            child: Text(AppLocalizations.of(context).done),
           ),
         ],
       ),

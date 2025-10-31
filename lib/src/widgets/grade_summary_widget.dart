@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/semester_grade_stats.dart';
+import '../l10n/app_localizations.dart';
 
 /// 學期成績統計 Widget
 class GradeSummaryWidget extends StatelessWidget {
@@ -14,6 +15,7 @@ class GradeSummaryWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Card(
       margin: const EdgeInsets.all(16),
       elevation: 1,
@@ -38,7 +40,7 @@ class GradeSummaryWidget extends StatelessWidget {
               children: [
                 Expanded(
                   child: _StatItem(
-                    label: '平均成績',
+                    label: l10n.averageScore,
                     value: stats.averageScoreString,
                     icon: Icons.star,
                     color: Theme.of(context).colorScheme.primary,
@@ -47,7 +49,7 @@ class GradeSummaryWidget extends StatelessWidget {
                 const SizedBox(width: 16),
                 Expanded(
                   child: _StatItem(
-                    label: '修習學分',
+                    label: l10n.takenCredits,
                     value: stats.totalCreditsString,
                     icon: Icons.book,
                     color: Theme.of(context).colorScheme.secondary,
@@ -62,7 +64,7 @@ class GradeSummaryWidget extends StatelessWidget {
               children: [
                 Expanded(
                   child: _StatItem(
-                    label: '獲得學分',
+                    label: l10n.obtainedCredits,
                     value: stats.earnedCreditsString,
                     icon: Icons.check_circle,
                     color: Theme.of(context).colorScheme.tertiary,
@@ -71,7 +73,7 @@ class GradeSummaryWidget extends StatelessWidget {
                 const SizedBox(width: 16),
                 Expanded(
                   child: _StatItem(
-                    label: '課程數',
+                    label: l10n.courseCount,
                     value: '${stats.passedCourses}/${stats.totalCourses}',
                     icon: Icons.assignment,
                     color: Theme.of(context).colorScheme.secondary,
@@ -96,7 +98,7 @@ class GradeSummaryWidget extends StatelessWidget {
                       size: 20),
                     const SizedBox(width: 8),
                     Text(
-                      '${stats.failedCourses} 門課程不及格',
+                      l10n.failedCoursesCount(stats.failedCourses),
                       style: TextStyle(
                         color: Theme.of(context).colorScheme.onErrorContainer,
                         fontWeight: FontWeight.w500,
@@ -110,17 +112,6 @@ class GradeSummaryWidget extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  /// 根據平均成績（0-100分）返回顏色
-  Color _getScoreColor(BuildContext context, double score) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    
-    if (score >= 90) return isDark ? Colors.green.shade300 : Colors.green.shade700;
-    if (score >= 80) return isDark ? Colors.lightGreen.shade300 : Colors.lightGreen.shade700;
-    if (score >= 70) return isDark ? Colors.blue.shade300 : Colors.blue.shade700;
-    if (score >= 60) return isDark ? Colors.orange.shade300 : Colors.orange.shade700;
-    return isDark ? Colors.red.shade300 : Colors.red.shade700;
   }
 }
 
@@ -197,6 +188,7 @@ class OverallGradeSummaryWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Card(
       margin: const EdgeInsets.all(16),
       elevation: 1,
@@ -205,7 +197,7 @@ class OverallGradeSummaryWidget extends StatelessWidget {
         child: Column(
           children: [
             Text(
-              '整體成績統計',
+              l10n.overallStats,
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: Theme.of(context).colorScheme.primary,
@@ -216,12 +208,12 @@ class OverallGradeSummaryWidget extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _OverallStatItem(
-                  label: '總平均',
+                  label: l10n.overallGpa,
                   value: overallAverage.toStringAsFixed(2),
                   icon: Icons.emoji_events,
                 ),
                 _OverallStatItem(
-                  label: '總學分',
+                  label: l10n.totalCredits,
                   value: totalCredits.toStringAsFixed(0),
                   icon: Icons.school,
                 ),
@@ -232,7 +224,7 @@ class OverallGradeSummaryWidget extends StatelessWidget {
               const Divider(),
               const SizedBox(height: 12),
               Text(
-                '總排名',
+                l10n.overallRank,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -243,13 +235,13 @@ class OverallGradeSummaryWidget extends StatelessWidget {
                 children: [
                   if (overallClassRank != null)
                     _OverallRankItem(
-                      label: '班排名',
+                      label: l10n.classRankFull,
                       rank: overallClassRank!,
                       icon: Icons.class_,
                     ),
                   if (overallDeptRank != null)
                     _OverallRankItem(
-                      label: '系排名',
+                      label: l10n.departmentRankFull,
                       rank: overallDeptRank!,
                       icon: Icons.school,
                     ),
@@ -308,6 +300,7 @@ class _OverallRankItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final colorScheme = Theme.of(context).colorScheme;
     final rankColor = colorScheme.tertiary;
     
@@ -329,7 +322,7 @@ class _OverallRankItem extends StatelessWidget {
               ),
         ),
         Text(
-          '前 ${rank.percentage.toStringAsFixed(1)}%',
+          l10n.topPercentage(rank.percentage.toStringAsFixed(1)),
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: colorScheme.onSurfaceVariant,
               ),

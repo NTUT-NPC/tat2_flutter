@@ -164,24 +164,17 @@ jobs:
             echo "SHOULD_SIGN_IOS=false" >> $GITHUB_ENV
           fi
 
-      - name: Install Provisioning Profile
-        if: env.SHOULD_SIGN_IOS == 'true'
-        run: |
-          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          echo "${{ secrets.IOS_BUILD_PROVISION_PROFILE_BASE64 }}" | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/github_actions.mobileprovision
-      
-      - name: Import Code Signing Certificate
+      - name: Import Code Signing Files
         if: env.SHOULD_SIGN_IOS == 'true'
         uses: apple-actions/import-codesign-certs@v3
         with:
-          p12-file-base64: ${{ secrets.IOS_BUILD_CERTIFICATE_BASE64 }}
+          p12-base64: ${{ secrets.IOS_BUILD_CERTIFICATE_BASE64 }}
           p12-password: ${{ secrets.IOS_P12_PASSWORD }}
+          provisioning-profiles-base64: ${{ secrets.IOS_BUILD_PROVISION_PROFILE_BASE64 }}
 
       - name: Build iOS IPA (Signed)
         if: env.SHOULD_SIGN_IOS == 'true'
-        env:
-          IOS_APPLE_TEAM_ID: ${{ secrets.IOS_APPLE_TEAM_ID }}
-        run: flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
+        run: flutter build ipa --release
 
       - name: Build iOS IPA (Unsigned)
         if: env.SHOULD_SIGN_IOS == 'false'

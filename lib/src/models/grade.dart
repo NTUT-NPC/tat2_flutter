@@ -1,7 +1,9 @@
 /// 成績模型
 class Grade {
   final String courseId;
-  final String courseName;
+  final String courseName;        // 當前顯示的課程名稱（根據語言設定）
+  final String? courseNameZh;     // 中文課程名稱
+  final String? courseNameEn;     // 英文課程名稱
   final String semester;
   final double? credits;
   final String? grade;
@@ -14,6 +16,8 @@ class Grade {
   Grade({
     required this.courseId,
     required this.courseName,
+    this.courseNameZh,
+    this.courseNameEn,
     required this.semester,
     this.credits,
     this.grade,
@@ -44,6 +48,8 @@ class Grade {
     return Grade(
       courseId: json['courseId'] ?? json['course_id'] ?? '',
       courseName: json['courseName'] ?? json['course_name'] ?? '',
+      courseNameZh: json['courseNameZh'] ?? json['course_name_zh'],
+      courseNameEn: json['courseNameEn'] ?? json['course_name_en'],
       semester: json['semester'] ?? '',
       credits: json['credits']?.toDouble(),
       grade: json['grade'],
@@ -59,6 +65,8 @@ class Grade {
     return {
       'courseId': courseId,
       'courseName': courseName,
+      if (courseNameZh != null) 'courseNameZh': courseNameZh,
+      if (courseNameEn != null) 'courseNameEn': courseNameEn,
       'semester': semester,
       'credits': credits,
       'grade': grade,
@@ -68,6 +76,18 @@ class Grade {
       if (category != null) 'category': category,
       if (extra != null) 'extra': extra,
     };
+  }
+  
+  /// 根據語言代碼獲取課程名稱
+  /// [languageCode] 可以是 'zh' 或 'en'
+  String getLocalizedName(String languageCode) {
+    if (languageCode == 'en' && courseNameEn != null && courseNameEn!.isNotEmpty) {
+      return courseNameEn!;
+    }
+    if (courseNameZh != null && courseNameZh!.isNotEmpty) {
+      return courseNameZh!;
+    }
+    return courseName;
   }
 
   /// 成績是否及格

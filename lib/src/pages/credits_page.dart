@@ -6,6 +6,7 @@ import '../services/credits_service.dart';
 import '../core/auth/auth_manager.dart';
 import '../widgets/graduation_settings_dialog.dart';
 import '../widgets/login_required_view.dart';
+import '../utils/language_utils.dart';
 
 /// 學分計算頁面（M3 設計，功能按照 TAT）
 class CreditsPage extends StatefulWidget {
@@ -25,25 +26,44 @@ class _CreditsPageState extends State<CreditsPage> {
   @override
   void initState() {
     super.initState();
-    _loadCreditStatistics();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadCreditStatistics();
+    });
   }
 
   Future<void> _loadCreditStatistics({bool forceRefresh = false}) async {
+    if (!mounted) return;
+    final l10n = AppLocalizations.of(context);
+    
     setState(() {
       _isLoading = true;
       _errorMessage = null;
       _loadingProgress = 0.0;
-      _loadingMessage = '準備載入...';
+      _loadingMessage = l10n.preparingLoad;
     });
 
     try {
       final authManager = context.read<AuthManager>();
       final creditsService = context.read<CreditsService>();
       
-      final studentId = authManager.currentCredential?.username;
+      // 先檢查是否已有憑證
+      String? studentId = authManager.currentCredential?.username;
+      
+      // 如果沒有憑證，嘗試自動登入
       if (studentId == null) {
+        debugPrint('[CreditsPage] 無憑證，嘗試自動登入...');
+        final result = await authManager.tryAutoLogin();
+        if (result != null && result.success) {
+          studentId = authManager.currentCredential?.username;
+          debugPrint('[CreditsPage] 自動登入成功');
+        }
+      }
+      
+      if (studentId == null) {
+        if (!mounted) return;
+        debugPrint('[CreditsPage] 無法獲取學號');
         setState(() {
-          _errorMessage = '請先登入';
+          _errorMessage = l10n.pleaseLoginFirst;
           _isLoading = false;
         });
         return;
@@ -53,22 +73,27 @@ class _CreditsPageState extends State<CreditsPage> {
         studentId: studentId,
         forceRefresh: forceRefresh,
         onProgress: (current, total, courseName) {
+          if (!mounted) return;
           // 更新進度（從 0 到 1）
           final progress = current / total;
+          final progressL10n = AppLocalizations.of(context);
           setState(() {
             _loadingProgress = progress;
-            _loadingMessage = '正在查詢課程資訊... ($current/$total)\n$courseName';
+            _loadingMessage = '${progressL10n.queryingCourseInfo(current, total)}\n$courseName';
           });
         },
       );
 
+      if (!mounted) return;
       setState(() {
         _stats = stats;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
+      final errorL10n = AppLocalizations.of(context);
       setState(() {
-        _errorMessage = '載入失敗: $e';
+        _errorMessage = errorL10n.loadFailedWith(e.toString());
         _isLoading = false;
       });
     }
@@ -98,12 +123,12 @@ class _CreditsPageState extends State<CreditsPage> {
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () => _loadCreditStatistics(forceRefresh: true),
-            tooltip: '重新整理',
+            tooltip: l10n.refresh,
           ),
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: _showSettingsDialog,
-            tooltip: '設定畢業標準',
+            tooltip: l10n.graduationSettings,
           ),
         ],
       ),
@@ -112,6 +137,8 @@ class _CreditsPageState extends State<CreditsPage> {
   }
 
   Widget _buildBody() {
+    final l10n = AppLocalizations.of(context);
+    
     if (_isLoading) {
       return Center(
         child: Padding(
@@ -159,8 +186,8 @@ class _CreditsPageState extends State<CreditsPage> {
 
     if (_errorMessage != null) {
       return LoginRequiredView(
-        featureName: '學分計算',
-        description: '訪客模式無法查看學分\n登入後可查看並緩存學分資料',
+        featureName: l10n.creditCalculation,
+        description: l10n.cannotViewCreditsInGuest,
         onLoginTap: () async {
           final result = await Navigator.of(context).pushNamed('/login');
           if (result == true && mounted) {
@@ -171,8 +198,8 @@ class _CreditsPageState extends State<CreditsPage> {
     }
 
     if (_stats == null) {
-      return const Center(
-        child: Text('暫無資料'),
+      return Center(
+        child: Text(l10n.noData),
       );
     }
 
@@ -184,12 +211,12 @@ class _CreditsPageState extends State<CreditsPage> {
           children: [
             const Icon(Icons.school_outlined, size: 64),
             const SizedBox(height: 16),
-            const Text('請先設定畢業標準'),
+            Text(l10n.pleaseSetGraduationStandard),
             const SizedBox(height: 16),
             FilledButton.icon(
               onPressed: _showSettingsDialog,
               icon: const Icon(Icons.settings),
-              label: const Text('設定畢業標準'),
+              label: Text(l10n.graduationSettings),
             ),
           ],
         ),
@@ -229,6 +256,7 @@ class _CreditsPageState extends State<CreditsPage> {
 
   /// 學分總覽卡片（對應 TAT 的 _summaryTile）
   Widget _buildSummaryCard() {
+    final l10n = AppLocalizations.of(context);
     final stats = _stats!;
     final needed = stats.creditsNeededForGraduation;
     final progress = stats.totalCredits / stats.graduationInfo.lowCredit;
@@ -247,7 +275,7 @@ class _CreditsPageState extends State<CreditsPage> {
                 ),
                 const SizedBox(width: 12),
                 Text(
-                  '學分總覽',
+                  l10n.creditOverview,
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
@@ -259,14 +287,14 @@ class _CreditsPageState extends State<CreditsPage> {
               children: [
                 Expanded(
                   child: _buildStatItem(
-                    label: '已修學分',
+                    label: l10n.earnedCredits,
                     value: '${stats.totalCredits}',
                     color: Theme.of(context).colorScheme.primary,
                   ),
                 ),
                 Expanded(
                   child: _buildStatItem(
-                    label: '畢業門檻',
+                    label: l10n.graduationThreshold,
                     value: '${stats.graduationInfo.lowCredit}',
                     color: Theme.of(context).colorScheme.secondary,
                   ),
@@ -274,7 +302,7 @@ class _CreditsPageState extends State<CreditsPage> {
                 if (needed > 0)
                   Expanded(
                     child: _buildStatItem(
-                      label: '還需',
+                      label: l10n.stillNeed,
                       value: '$needed',
                       color: Theme.of(context).colorScheme.tertiary,
                     ),
@@ -290,7 +318,7 @@ class _CreditsPageState extends State<CreditsPage> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      '進度',
+                      l10n.progress,
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                     Text(
@@ -354,6 +382,8 @@ class _CreditsPageState extends State<CreditsPage> {
 
   /// 各類課程學分卡片（對應 TAT 的 constCourseType 顯示）
   Widget _buildCourseTypesCard() {
+    final l10n = AppLocalizations.of(context);
+    
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(20.0),
@@ -361,7 +391,7 @@ class _CreditsPageState extends State<CreditsPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '各類課程學分',
+              l10n.courseTypeCredits,
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -375,13 +405,15 @@ class _CreditsPageState extends State<CreditsPage> {
   }
 
   List<Widget> _buildCourseTypeItems() {
-    const names = {
-      "○": "部訂共同必修",
-      "△": "校訂共同必修",
-      "☆": "共同選修",
-      "●": "部訂專業必修",
-      "▲": "校訂專業必修",
-      "★": "專業選修",
+    final l10n = AppLocalizations.of(context);
+    
+    final names = {
+      "○": l10n.requiredCommonCore,
+      "△": l10n.requiredSchoolCore,
+      "☆": l10n.electiveCommon,
+      "●": l10n.requiredMajorCore,
+      "▲": l10n.requiredMajorSchool,
+      "★": l10n.electiveMajor,
     };
 
     return courseTypes.map((type) {
@@ -431,6 +463,7 @@ class _CreditsPageState extends State<CreditsPage> {
   }
 
   void _showCourseTypeDetail(String type, String typeName) {
+    final l10n = AppLocalizations.of(context);
     final courses = _stats!.getCoursesByType(type);
 
     showDialog(
@@ -444,10 +477,11 @@ class _CreditsPageState extends State<CreditsPage> {
             itemCount: courses.length,
             itemBuilder: (context, index) {
               final course = courses[index];
+              final languageCode = LanguageUtils.getLanguageCode(context);
               return ListTile(
-                title: Text(course.nameZh),
+                title: Text(course.getLocalizedName(languageCode)),
                 subtitle: Text(course.openClass),
-                trailing: Text('${course.credit.toInt()}學分'),
+                trailing: Text(l10n.creditsValue(course.credit.toInt())),
               );
             },
           ),
@@ -455,7 +489,7 @@ class _CreditsPageState extends State<CreditsPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('關閉'),
+            child: Text(l10n.close),
           ),
         ],
       ),
@@ -464,6 +498,7 @@ class _CreditsPageState extends State<CreditsPage> {
 
   /// 博雅學分卡片（根據學院需求顯示）
   Widget _buildGeneralLessonCard() {
+    final l10n = AppLocalizations.of(context);
     final generalCredits = _stats!.coreGeneralLessonCredits + _stats!.selectGeneralLessonCredits;
     final minCredits = 15; // 博雅學分最低要求 15 學分
     final progress = generalCredits / minCredits;
@@ -496,7 +531,7 @@ class _CreditsPageState extends State<CreditsPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '博雅學分',
+                          l10n.boyaCredits,
                           style: Theme.of(context).textTheme.titleMedium?.copyWith(
                                 fontWeight: FontWeight.bold,
                               ),
@@ -523,7 +558,7 @@ class _CreditsPageState extends State<CreditsPage> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    '已修 $generalCredits / 需求 $minCredits',
+                    '${l10n.earned(generalCredits)} / ${l10n.requiredCreditsCount(minCredits)}',
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                   Text(
@@ -592,6 +627,7 @@ class _CreditsPageState extends State<CreditsPage> {
                   
                   // 自由選修（與其他向度同層級）
                   Builder(builder: (context) {
+                    final l10n = AppLocalizations.of(context);
                     final mandatoryCredits = requirement.requiredDimensions.entries
                         .fold<int>(0, (sum, entry) => sum + (dimensionCredits[entry.key] ?? 0));
                     final totalCredits = generalCredits;
@@ -608,7 +644,7 @@ class _CreditsPageState extends State<CreditsPage> {
                             children: [
                               Expanded(
                                 child: Text(
-                                  '自由選修',
+                                  l10n.freeChoice,
                                   style: Theme.of(context).textTheme.bodyMedium,
                                 ),
                               ),
@@ -681,6 +717,7 @@ class _CreditsPageState extends State<CreditsPage> {
   }
 
   void _showGeneralLessonDetail() {
+    final l10n = AppLocalizations.of(context);
     final courses = _stats!.generalLessonCourses;
     final dimensionCredits = _stats!.generalLessonCreditsByDimension;
     final requirement = _stats!.collegeBoyaRequirement;
@@ -691,7 +728,7 @@ class _CreditsPageState extends State<CreditsPage> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('博雅學分詳情'),
+            Text(l10n.boyaDetails),
             if (requirement != null)
               Padding(
                 padding: const EdgeInsets.only(top: 4.0),
@@ -729,29 +766,32 @@ class _CreditsPageState extends State<CreditsPage> {
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 8.0),
                         child: Text(
-                          '${dimension.replaceAll('向度', '')} ($credit / $required 學分)',
+                          l10n.dimensionCredits(dimension.replaceAll('向度', ''), credit, required),
                           style: Theme.of(context).textTheme.titleSmall?.copyWith(
                                 fontWeight: FontWeight.bold,
                               ),
                         ),
                       ),
-                      ...dimensionCourses.map((course) => Padding(
-                            padding: const EdgeInsets.only(left: 16.0, bottom: 4.0),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    course.nameZh,
-                                    style: Theme.of(context).textTheme.bodyMedium,
-                                  ),
+                      ...dimensionCourses.map((course) {
+                        final languageCode = LanguageUtils.getLanguageCode(context);
+                        return Padding(
+                          padding: const EdgeInsets.only(left: 16.0, bottom: 4.0),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  course.getLocalizedName(languageCode),
+                                  style: Theme.of(context).textTheme.bodyMedium,
                                 ),
-                                Text(
-                                  '${course.credit.toInt()}學分',
-                                  style: Theme.of(context).textTheme.bodySmall,
-                                ),
-                              ],
-                            ),
-                          )).toList(),
+                              ),
+                              Text(
+                                l10n.creditsValue(course.credit.toInt()),
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
                       const Divider(),
                     ],
                   );
@@ -764,13 +804,13 @@ class _CreditsPageState extends State<CreditsPage> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        '總計',
+                        l10n.totalCredits,
                         style: Theme.of(context).textTheme.titleMedium?.copyWith(
                               fontWeight: FontWeight.bold,
                             ),
                       ),
                       Text(
-                        '${courses.fold(0, (sum, c) => sum + c.credit.toInt())} 學分',
+                        l10n.creditsValue(courses.fold(0, (sum, c) => sum + c.credit.toInt())),
                         style: Theme.of(context).textTheme.titleMedium?.copyWith(
                               fontWeight: FontWeight.bold,
                             ),
@@ -785,7 +825,7 @@ class _CreditsPageState extends State<CreditsPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('關閉'),
+            child: Text(l10n.close),
           ),
         ],
       ),
@@ -794,6 +834,7 @@ class _CreditsPageState extends State<CreditsPage> {
 
   /// 外系學分卡片（對應 TAT 的 _otherDepartmentItemTile）
   Widget _buildOtherDepartmentCard() {
+    final l10n = AppLocalizations.of(context);
     final otherCredits = _stats!.otherDepartmentCredits;
     final maxCredits = _stats!.graduationInfo.outerDepartmentMaxCredit;
     final progress = maxCredits > 0 ? (otherCredits / maxCredits).clamp(0.0, 1.0) : 0.0;
@@ -815,7 +856,7 @@ class _CreditsPageState extends State<CreditsPage> {
                   ),
                   const SizedBox(width: 12),
                   Text(
-                    '外系學分',
+                    l10n.otherDepartmentCredits,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
@@ -827,7 +868,7 @@ class _CreditsPageState extends State<CreditsPage> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    '已修 $otherCredits / 上限 $maxCredits',
+                    l10n.earnedMax(otherCredits, maxCredits),
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                   Text(
@@ -853,12 +894,13 @@ class _CreditsPageState extends State<CreditsPage> {
   }
 
   void _showOtherDepartmentDetail() {
+    final l10n = AppLocalizations.of(context);
     final courses = _stats!.getOtherDepartmentCourses();
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('外系學分'),
+        title: Text(l10n.otherDepartmentCredits),
         content: SizedBox(
           width: double.maxFinite,
           child: ListView.builder(
@@ -866,10 +908,11 @@ class _CreditsPageState extends State<CreditsPage> {
             itemCount: courses.length,
             itemBuilder: (context, index) {
               final course = courses[index];
+              final languageCode = LanguageUtils.getLanguageCode(context);
               return ListTile(
-                title: Text(course.nameZh),
+                title: Text(course.getLocalizedName(languageCode)),
                 subtitle: Text(course.openClass),
-                trailing: Text('${course.credit.toInt()}學分'),
+                trailing: Text(l10n.creditsValue(course.credit.toInt())),
               );
             },
           ),
@@ -877,7 +920,7 @@ class _CreditsPageState extends State<CreditsPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('關閉'),
+            child: Text(l10n.close),
           ),
         ],
       ),

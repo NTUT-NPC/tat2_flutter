@@ -4,6 +4,8 @@ import 'package:auto_size_text/auto_size_text.dart';
 import 'package:provider/provider.dart';
 import '../services/course_color_service.dart';
 import '../services/theme_settings_service.dart';
+import '../l10n/app_localizations.dart';
+import '../helpers/course_data_helper.dart';
 
 /// 週課表組件 - TAT 傳統風格
 /// 
@@ -74,7 +76,10 @@ class _WeeklyCourseTableTatState extends State<WeeklyCourseTableTat> {
     '1', '2', '3', '4', 'N', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D'
   ];
   
-  static const List<String> weekDays = ['一', '二', '三', '四', '五'];
+  List<String> _getWeekDays(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return [l10n.mon, l10n.tue, l10n.wed, l10n.thu, l10n.fri];
+  }
   
   // 星期映射表（用於解析）
   static const Map<String, int> dayIndexMap = {
@@ -145,12 +150,12 @@ class _WeeklyCourseTableTatState extends State<WeeklyCourseTableTat> {
   @override
   Widget build(BuildContext context) {
     if (widget.courses.isEmpty) {
-      return const Center(
+      return Center(
         child: Padding(
-          padding: EdgeInsets.all(32.0),
+          padding: const EdgeInsets.all(32.0),
           child: Text(
-            '目前沒有課程',
-            style: TextStyle(fontSize: 16, color: Colors.grey),
+            AppLocalizations.of(context).noCoursesCurrently,
+            style: const TextStyle(fontSize: 16, color: Colors.grey),
           ),
         ),
       );
@@ -230,7 +235,7 @@ class _WeeklyCourseTableTatState extends State<WeeklyCourseTableTat> {
           // 左上角空格（節次欄位置）
           const SizedBox(width: sectionWidth),
           // 星期列
-          ...weekDays.map((day) {
+          ..._getWeekDays(context).map((day) {
             return Expanded(
               child: Center(
                 child: Text(
@@ -260,6 +265,9 @@ class _WeeklyCourseTableTatState extends State<WeeklyCourseTableTat> {
         ? colorScheme.surface
         : colorScheme.surfaceContainerHighest.withOpacity(0.3);
     
+    // 使用固定的中文星期來查找課程（因為 courseGrid 的 key 使用中文）
+    const weekDaysForLookup = ['一', '二', '三', '四', '五'];
+    
     return Container(
       color: bgColor,
       height: courseHeight,
@@ -281,14 +289,18 @@ class _WeeklyCourseTableTatState extends State<WeeklyCourseTableTat> {
             ),
           ),
           // 每天的課程
-          ...weekDays.map((day) {
+          ...weekDaysForLookup.asMap().entries.map((entry) {
+            final dayIndex = entry.key;
+            final day = entry.value;
             final key = '$day-${sectionLabels[sectionIndex]}';
             final coursesInSlot = courseGrid[key] ?? [];
             
             return Expanded(
               child: coursesInSlot.isEmpty
                   ? const SizedBox.expand()  // 保持格子大小，確保可以點擊
-                  : _buildCourseCard(context, coursesInSlot.first),
+                  : SizedBox.expand(
+                      child: _buildCourseCard(context, coursesInSlot.first),
+                    ),
             );
           }),
         ],
@@ -299,7 +311,7 @@ class _WeeklyCourseTableTatState extends State<WeeklyCourseTableTat> {
   /// 構建課程卡片（TAT 風格）
   Widget _buildCourseCard(BuildContext context, Map<String, dynamic> course) {
     final courseId = course['courseId'] ?? '';
-    final courseName = course['courseName'] ?? '';
+    final courseName = CourseDataHelper.getLocalizedCourseName(context, course);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final seedColor = Theme.of(context).colorScheme.primary;
     
@@ -395,7 +407,7 @@ class _WeeklyCourseTableTatState extends State<WeeklyCourseTableTat> {
   
   /// 顯示顏色選擇器（支援三種配色風格）
   void _showColorPicker(BuildContext context, Map<String, dynamic> course) {
-    final courseName = course['courseName'] ?? '';
+    final courseName = CourseDataHelper.getLocalizedCourseName(context, course);
     final courseId = course['courseId'] ?? '';
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final seedColor = Theme.of(context).colorScheme.primary;
@@ -439,7 +451,7 @@ class _WeeklyCourseTableTatState extends State<WeeklyCourseTableTat> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                '選擇課程顏色',
+                AppLocalizations.of(context).selectCourseColor,
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 6),
@@ -528,11 +540,11 @@ class _WeeklyCourseTableTatState extends State<WeeklyCourseTableTat> {
                 }
               },
               icon: const Icon(Icons.refresh_rounded),
-              label: const Text('重置'),
+              label: Text(AppLocalizations.of(context).reset),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('完成'),
+              child: Text(AppLocalizations.of(context).done),
             ),
           ],
         ),
@@ -549,7 +561,7 @@ class _WeeklyCourseTableTatState extends State<WeeklyCourseTableTat> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              '選擇課程顏色',
+              AppLocalizations.of(context).selectCourseColor,
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 6),
@@ -648,11 +660,11 @@ class _WeeklyCourseTableTatState extends State<WeeklyCourseTableTat> {
               }
             },
             icon: const Icon(Icons.refresh_rounded),
-            label: const Text('重置'),
+            label: Text(AppLocalizations.of(context).reset),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('完成'),
+            child: Text(AppLocalizations.of(context).done),
           ),
         ],
       ),

@@ -36,7 +36,15 @@ class CourseCreditInfo {
     this.dimension = '',
   });
 
-  String get name => nameZh; // 目前主要使用中文名稱
+  String get name => nameZh; // 預設使用中文名稱（向後兼容）
+  
+  /// 根據語言代碼獲取本地化課程名稱
+  String getLocalizedName(String languageCode) {
+    if (languageCode == 'en' && nameEn.isNotEmpty) {
+      return nameEn;
+    }
+    return nameZh;
+  }
 
   /// 是否通過（取得學分）- 完全按照 TAT 的 isPass
   bool get isPassed {

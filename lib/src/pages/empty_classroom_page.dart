@@ -16,13 +16,16 @@ class _EmptyClassroomPageState extends State<EmptyClassroomPage>
     with AutomaticKeepAliveClientMixin, WidgetsBindingObserver {
 
   // 時間相關常數（只顯示週一到週五）
-  static const Map<String, String> _dayNames = {
-    'mon': '週一',
-    'tue': '週二',
-    'wed': '週三',
-    'thu': '週四',
-    'fri': '週五',
-  };
+  Map<String, String> _getDayNames(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return {
+      'mon': l10n.monShort,
+      'tue': l10n.tueShort,
+      'wed': l10n.wedShort,
+      'thu': l10n.thuShort,
+      'fri': l10n.friShort,
+    };
+  }
 
   static const Map<String, String> _periodTimes = {
     '1': '08:10-09:00',
@@ -78,7 +81,8 @@ class _EmptyClassroomPageState extends State<EmptyClassroomPage>
     const days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
     final day = days[now.weekday % 7];
     // 如果是週末，預設為週一
-    return _dayNames.containsKey(day) ? day : 'mon';
+    const validDays = ['mon', 'tue', 'wed', 'thu', 'fri'];
+    return validDays.contains(day) ? day : 'mon';
   }
 
   /// 解析教室的樓層
@@ -160,6 +164,7 @@ class _EmptyClassroomPageState extends State<EmptyClassroomPage>
 
   /// 顯示教學大樓篩選對話框 - MD3 風格
   void _showBuildingFilterDialog() {
+    final l10n = AppLocalizations.of(context);
     final buildings = _getBuildings();
     final colorScheme = Theme.of(context).colorScheme;
     
@@ -167,7 +172,7 @@ class _EmptyClassroomPageState extends State<EmptyClassroomPage>
       context: context,
       builder: (context) => AlertDialog(
         icon: Icon(Icons.business, color: colorScheme.primary),
-        title: const Text('選擇教學大樓'),
+        title: Text(l10n.selectBuilding),
         content: SizedBox(
           width: double.maxFinite,
           child: ListView(
@@ -177,7 +182,7 @@ class _EmptyClassroomPageState extends State<EmptyClassroomPage>
                 leading: _selectedBuilding == null 
                     ? Icon(Icons.check_circle, color: colorScheme.primary)
                     : Icon(Icons.circle_outlined, color: colorScheme.outlineVariant),
-                title: const Text('全部大樓'),
+                title: Text(l10n.allBuildings),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -210,7 +215,7 @@ class _EmptyClassroomPageState extends State<EmptyClassroomPage>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('關閉'),
+            child: Text(l10n.close),
           ),
         ],
       ),
@@ -219,6 +224,7 @@ class _EmptyClassroomPageState extends State<EmptyClassroomPage>
 
   /// 顯示樓層篩選對話框 - MD3 風格
   void _showFloorFilterDialog() {
+    final l10n = AppLocalizations.of(context);
     final floors = _getFloors();
     final colorScheme = Theme.of(context).colorScheme;
     
@@ -226,7 +232,7 @@ class _EmptyClassroomPageState extends State<EmptyClassroomPage>
       context: context,
       builder: (context) => AlertDialog(
         icon: Icon(Icons.layers, color: colorScheme.primary),
-        title: const Text('選擇樓層'),
+        title: Text(l10n.selectFloor),
         content: SizedBox(
           width: double.maxFinite,
           child: ListView(
@@ -236,7 +242,7 @@ class _EmptyClassroomPageState extends State<EmptyClassroomPage>
                 leading: _selectedFloor == null 
                     ? Icon(Icons.check_circle, color: colorScheme.primary)
                     : Icon(Icons.circle_outlined, color: colorScheme.outlineVariant),
-                title: const Text('全部樓層'),
+                title: Text(l10n.allFloors),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -252,7 +258,7 @@ class _EmptyClassroomPageState extends State<EmptyClassroomPage>
                     leading: _selectedFloor == floor
                         ? Icon(Icons.check_circle, color: colorScheme.primary)
                         : Icon(Icons.circle_outlined, color: colorScheme.outlineVariant),
-                    title: Text('$floor樓'),
+                    title: Text(l10n.floorNumber(floor)),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -269,7 +275,7 @@ class _EmptyClassroomPageState extends State<EmptyClassroomPage>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('關閉'),
+            child: Text(l10n.close),
           ),
         ],
       ),
@@ -278,6 +284,8 @@ class _EmptyClassroomPageState extends State<EmptyClassroomPage>
 
   /// 載入空教室資料（支援緩存）
   Future<void> _loadEmptyClassrooms({bool forceRefresh = false}) async {
+    final l10n = AppLocalizations.of(context);
+    
     // 如果已有緩存且不強制刷新，直接使用緩存
     if (!forceRefresh && _cache.containsKey(_selectedDay)) {
       setState(() {
@@ -308,13 +316,13 @@ class _EmptyClassroomPageState extends State<EmptyClassroomPage>
         });
       } else {
         setState(() {
-          _errorMessage = '查詢失敗，請稍後再試';
+          _errorMessage = l10n.queryFailed;
           _isLoading = false;
         });
       }
     } catch (e) {
       setState(() {
-        _errorMessage = '發生錯誤: $e';
+        _errorMessage = l10n.errorOccurred(e.toString());
         _isLoading = false;
       });
     }
@@ -353,7 +361,7 @@ class _EmptyClassroomPageState extends State<EmptyClassroomPage>
                 if (hasActiveFilters)
                   IconButton(
                     icon: const Icon(Icons.filter_list_off),
-                    tooltip: '清除篩選',
+                    tooltip: l10n.clearFilters,
                     onPressed: () {
                       setState(() {
                         _selectedBuilding = null;
@@ -363,7 +371,7 @@ class _EmptyClassroomPageState extends State<EmptyClassroomPage>
                   ),
                 IconButton(
                   icon: const Icon(Icons.refresh),
-                  tooltip: '重新整理',
+                  tooltip: l10n.refresh,
                   onPressed: () => _loadEmptyClassrooms(forceRefresh: true),
                 ),
               ],
@@ -390,7 +398,7 @@ class _EmptyClassroomPageState extends State<EmptyClassroomPage>
                       child: SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         child: SegmentedButton<String>(
-                          segments: _dayNames.entries.map((entry) {
+                          segments: _getDayNames(context).entries.map((entry) {
                             return ButtonSegment<String>(
                               value: entry.key,
                               label: Text(entry.value),
@@ -420,7 +428,7 @@ class _EmptyClassroomPageState extends State<EmptyClassroomPage>
                                 const SizedBox(width: 6),
                                 Flexible(
                                   child: Text(
-                                    _selectedBuilding ?? '全部大樓',
+                                    _selectedBuilding ?? l10n.allBuildings,
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
@@ -441,7 +449,7 @@ class _EmptyClassroomPageState extends State<EmptyClassroomPage>
                                 const SizedBox(width: 6),
                                 Flexible(
                                   child: Text(
-                                    _selectedFloor != null ? '$_selectedFloor樓' : '全部樓層',
+                                    _selectedFloor != null ? l10n.floorNumber(_selectedFloor!) : l10n.allFloors,
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
@@ -492,6 +500,7 @@ class _EmptyClassroomPageState extends State<EmptyClassroomPage>
   }
 
   List<Widget> _buildClassroomListSlivers(ThemeData theme) {
+    final l10n = AppLocalizations.of(context);
     final colorScheme = theme.colorScheme;
     
     if (_isLoading) {
@@ -504,7 +513,7 @@ class _EmptyClassroomPageState extends State<EmptyClassroomPage>
                 CircularProgressIndicator(color: colorScheme.primary),
                 const SizedBox(height: 16),
                 Text(
-                  '載入中...',
+                  l10n.loading,
                   style: TextStyle(
                     color: colorScheme.onSurfaceVariant,
                     fontSize: 14,
@@ -542,7 +551,7 @@ class _EmptyClassroomPageState extends State<EmptyClassroomPage>
                 FilledButton.icon(
                   onPressed: () => _loadEmptyClassrooms(forceRefresh: true),
                   icon: const Icon(Icons.refresh),
-                  label: const Text('重試'),
+                  label: Text(l10n.retry),
                 ),
               ],
             ),
@@ -565,7 +574,7 @@ class _EmptyClassroomPageState extends State<EmptyClassroomPage>
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  '目前沒有空教室資料',
+                  l10n.noClassroomData,
                   style: TextStyle(
                     color: colorScheme.onSurfaceVariant,
                     fontSize: 16,
@@ -574,7 +583,7 @@ class _EmptyClassroomPageState extends State<EmptyClassroomPage>
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  '可以切換其他星期查看',
+                  l10n.switchOtherDay,
                   style: TextStyle(
                     color: colorScheme.onSurfaceVariant.withOpacity(0.7),
                     fontSize: 14,
@@ -604,7 +613,7 @@ class _EmptyClassroomPageState extends State<EmptyClassroomPage>
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  '沒有符合條件的空教室',
+                  l10n.noMatchingClassrooms,
                   style: TextStyle(
                     color: colorScheme.onSurfaceVariant,
                     fontSize: 16,
@@ -613,7 +622,7 @@ class _EmptyClassroomPageState extends State<EmptyClassroomPage>
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  '試試調整篩選條件',
+                  l10n.adjustFilters,
                   style: TextStyle(
                     color: colorScheme.onSurfaceVariant.withOpacity(0.7),
                     fontSize: 14,
@@ -649,7 +658,7 @@ class _EmptyClassroomPageState extends State<EmptyClassroomPage>
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      '找到 ${filteredClassrooms.length} 間教室',
+                      l10n.foundClassrooms(filteredClassrooms.length),
                       style: theme.textTheme.titleSmall?.copyWith(
                         color: colorScheme.onSecondaryContainer,
                         fontWeight: FontWeight.w600,
@@ -664,7 +673,7 @@ class _EmptyClassroomPageState extends State<EmptyClassroomPage>
                       theme.brightness == Brightness.light 
                         ? Colors.green.shade300.withOpacity(0.8)
                         : Colors.green.shade700.withOpacity(0.7),
-                      '空',
+                      l10n.available,
                     ),
                     const SizedBox(width: 12),
                     _buildLegendItem(
@@ -672,7 +681,7 @@ class _EmptyClassroomPageState extends State<EmptyClassroomPage>
                       theme.brightness == Brightness.light 
                         ? Colors.red.shade300.withOpacity(0.8)
                         : Colors.red.shade700.withOpacity(0.7),
-                      '忙',
+                      l10n.occupied,
                     ),
                   ],
                 ),
@@ -697,6 +706,7 @@ class _EmptyClassroomPageState extends State<EmptyClassroomPage>
   }
 
   Widget _buildClassroomCard(EmptyClassroom classroom, ThemeData theme) {
+    final l10n = AppLocalizations.of(context);
     final colorScheme = theme.colorScheme;
     final building = classroom.category;
     final floor = _parseFloor(classroom.name);
@@ -741,7 +751,7 @@ class _EmptyClassroomPageState extends State<EmptyClassroomPage>
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      floor != null ? '$building $floor樓' : building,
+                      floor != null ? '$building ${l10n.floorNumber(floor)}' : building,
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: colorScheme.onSurfaceVariant,
                       ),
@@ -794,6 +804,7 @@ class _EmptyClassroomPageState extends State<EmptyClassroomPage>
   }
 
   void _showClassroomDetail(EmptyClassroom classroom) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final building = classroom.category;
@@ -871,7 +882,7 @@ class _EmptyClassroomPageState extends State<EmptyClassroomPage>
                                     ),
                                     const SizedBox(width: 4),
                                     Text(
-                                      floor != null ? '$building $floor樓' : building,
+                                      floor != null ? '$building ${l10n.floorNumber(floor)}' : building,
                                       style: theme.textTheme.bodyMedium?.copyWith(
                                         color: colorScheme.onSurfaceVariant,
                                       ),
@@ -898,7 +909,7 @@ class _EmptyClassroomPageState extends State<EmptyClassroomPage>
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text(
-                              '${_dayNames[_selectedDay]} 時段一覽',
+                              '${_getDayNames(context)[_selectedDay]} ${l10n.periodSchedule}',
                               style: theme.textTheme.titleMedium?.copyWith(
                                 fontWeight: FontWeight.bold,
                                 color: colorScheme.onSecondaryContainer,
@@ -980,7 +991,7 @@ class _EmptyClassroomPageState extends State<EmptyClassroomPage>
                                 borderRadius: BorderRadius.circular(16),
                               ),
                               child: Text(
-                                isAvailable ? '空堂' : '有課',
+                                isAvailable ? l10n.freeTime : l10n.busyTime,
                                 style: TextStyle(
                                   color: textColor,
                                   fontWeight: FontWeight.bold,

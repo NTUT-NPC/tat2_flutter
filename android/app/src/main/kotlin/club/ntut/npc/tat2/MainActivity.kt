@@ -10,7 +10,7 @@ import io.flutter.plugin.common.MethodChannel
 import club.ntut.npc.tat2.widget.CourseWidgetProvider
 
 class MainActivity: FlutterActivity() {
-    private val WIDGET_CHANNEL = "org.ntut.qaq/widget"
+    private val WIDGET_CHANNEL = "club.ntut.npc.tat2/widget"
     
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)

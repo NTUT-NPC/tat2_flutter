@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../l10n/app_localizations.dart';
 import 'privacy_policy_page.dart';
 import 'terms_of_service_page.dart';
@@ -24,12 +25,22 @@ class _AboutPageState extends State<AboutPage> {
   bool _isLoadingContributors = true;
   List<dynamic> _specialThanksContributors = [];
   bool _isLoadingSpecialThanks = true;
+  
+  // 緩存相關常量
+  static const String _cacheKeyMainContributors = 'main_contributors_cache';
+  static const String _cacheKeyMainTimestamp = 'main_contributors_timestamp';
+  static const String _cacheKeySpecialThanks = 'special_thanks_cache';
+  static const String _cacheKeySpecialTimestamp = 'special_thanks_timestamp';
+  static const Duration _cacheDuration = Duration(hours: 24); // 緩存 24 小時
 
   // Repositories to feature in the "Special Thanks" section
-  final Map<String, String> _specialThanksRepos = {
-    'NEO-TAT/tat_flutter': '北科課表 APP 核心技術參考',
-    'gnehs/ntut-course-web': '北科課程爬蟲與網頁版參考',
-  };
+  Map<String, String> _getSpecialThanksRepos(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return {
+      'NEO-TAT/tat_flutter': l10n.coreFeatureReference,
+      'gnehs/ntut-course-web': l10n.webCrawlerReference,
+    };
+  }
 
   @override
   void initState() {
@@ -45,34 +56,136 @@ class _AboutPageState extends State<AboutPage> {
       _isLoadingSpecialThanks = true;
     });
 
-    // Fetch contributors for the main project
-    final mainContributorsFuture = _fetchContributors(
-        'https://api.github.com/repos/NTUT-NPC/tat2_flutter/contributors');
+    final prefs = await SharedPreferences.getInstance();
 
-    // Fetch contributors for all "Special Thanks" repositories concurrently
-    final specialThanksFutures = _specialThanksRepos.keys
-        .map((slug) => _fetchContributors(
-            'https://api.github.com/repos/$slug/contributors',
-            repoSlug: slug))
-        .toList();
+    // 嘗試從緩存加載主項目貢獻者
+    final cachedMainContributors = await _loadFromCache(
+      prefs,
+      _cacheKeyMainContributors,
+      _cacheKeyMainTimestamp,
+    );
 
-    // Process main project contributors
-    final mainContributors = await mainContributorsFuture;
-    if (mounted) {
-      setState(() {
-        _contributors = mainContributors;
-        _isLoadingContributors = false;
-      });
+    if (cachedMainContributors != null) {
+      // 使用緩存數據
+      if (mounted) {
+        setState(() {
+          _contributors = cachedMainContributors;
+          _isLoadingContributors = false;
+        });
+      }
+    } else {
+      // 從 API 獲取主項目貢獻者
+      final mainContributors = await _fetchContributors(
+          'https://api.github.com/repos/NTUT-NPC/tat2_flutter/contributors');
+      
+      if (mainContributors.isNotEmpty) {
+        await _saveToCache(
+          prefs,
+          _cacheKeyMainContributors,
+          _cacheKeyMainTimestamp,
+          mainContributors,
+        );
+      }
+      
+      if (mounted) {
+        setState(() {
+          _contributors = mainContributors;
+          _isLoadingContributors = false;
+        });
+      }
     }
 
-    // Process "Special Thanks" contributors
-    final specialThanksResults = await Future.wait(specialThanksFutures);
-    if (mounted) {
-      setState(() {
-        _specialThanksContributors =
-            specialThanksResults.expand((result) => result).toList();
-        _isLoadingSpecialThanks = false;
-      });
+    // 嘗試從緩存加載特別感謝貢獻者
+    final cachedSpecialThanks = await _loadFromCache(
+      prefs,
+      _cacheKeySpecialThanks,
+      _cacheKeySpecialTimestamp,
+    );
+
+    if (cachedSpecialThanks != null) {
+      // 使用緩存數據
+      if (mounted) {
+        setState(() {
+          _specialThanksContributors = cachedSpecialThanks;
+          _isLoadingSpecialThanks = false;
+        });
+      }
+    } else {
+      // 從 API 獲取特別感謝貢獻者
+      final specialThanksRepos = _getSpecialThanksRepos(context);
+      final specialThanksFutures = specialThanksRepos.keys
+          .map((slug) => _fetchContributors(
+              'https://api.github.com/repos/$slug/contributors',
+              repoSlug: slug))
+          .toList();
+
+      final specialThanksResults = await Future.wait(specialThanksFutures);
+      final allSpecialThanks =
+          specialThanksResults.expand((result) => result).toList();
+
+      if (allSpecialThanks.isNotEmpty) {
+        await _saveToCache(
+          prefs,
+          _cacheKeySpecialThanks,
+          _cacheKeySpecialTimestamp,
+          allSpecialThanks,
+        );
+      }
+
+      if (mounted) {
+        setState(() {
+          _specialThanksContributors = allSpecialThanks;
+          _isLoadingSpecialThanks = false;
+        });
+      }
+    }
+  }
+
+  /// 從緩存加載數據
+  Future<List<dynamic>?> _loadFromCache(
+    SharedPreferences prefs,
+    String cacheKey,
+    String timestampKey,
+  ) async {
+    try {
+      final timestampStr = prefs.getString(timestampKey);
+      if (timestampStr == null) return null;
+
+      final timestamp = DateTime.parse(timestampStr);
+      final now = DateTime.now();
+
+      // 檢查緩存是否過期
+      if (now.difference(timestamp) > _cacheDuration) {
+        debugPrint('Cache expired for $cacheKey');
+        return null;
+      }
+
+      final cachedData = prefs.getString(cacheKey);
+      if (cachedData == null) return null;
+
+      final decoded = json.decode(cachedData) as List<dynamic>;
+      debugPrint('Loaded ${decoded.length} items from cache: $cacheKey');
+      return decoded;
+    } catch (e) {
+      debugPrint('Error loading cache for $cacheKey: $e');
+      return null;
+    }
+  }
+
+  /// 保存數據到緩存
+  Future<void> _saveToCache(
+    SharedPreferences prefs,
+    String cacheKey,
+    String timestampKey,
+    List<dynamic> data,
+  ) async {
+    try {
+      final encoded = json.encode(data);
+      await prefs.setString(cacheKey, encoded);
+      await prefs.setString(timestampKey, DateTime.now().toIso8601String());
+      debugPrint('Saved ${data.length} items to cache: $cacheKey');
+    } catch (e) {
+      debugPrint('Error saving cache for $cacheKey: $e');
     }
   }
 
@@ -168,7 +281,7 @@ class _AboutPageState extends State<AboutPage> {
             const SizedBox(height: 24),
 
             // 作者資訊
-            _buildSectionTitle('貢獻者', theme),
+            _buildSectionTitle(l10n.contributors, theme),
             if (_isLoadingContributors)
               const Center(child: CircularProgressIndicator())
             else
@@ -184,7 +297,7 @@ class _AboutPageState extends State<AboutPage> {
             const SizedBox(height: 24),
 
             // Special Thanks Section
-            _buildSectionTitle('元老級貢獻者', theme),
+            _buildSectionTitle(l10n.seniorContributors, theme),
             if (_isLoadingSpecialThanks)
               const Center(child: CircularProgressIndicator())
             else
@@ -200,8 +313,8 @@ class _AboutPageState extends State<AboutPage> {
             const SizedBox(height: 24),
 
             // 特別感謝
-            _buildSectionTitle('特別感謝', theme),
-            ..._specialThanksRepos.entries.map((entry) {
+            _buildSectionTitle(l10n.specialThanks, theme),
+            ..._getSpecialThanksRepos(context).entries.map((entry) {
               return _buildClickableCard(
                 icon: Icons.favorite,
                 title: entry.key,
@@ -213,11 +326,11 @@ class _AboutPageState extends State<AboutPage> {
             const SizedBox(height: 24),
 
             // 法律資訊
-            _buildSectionTitle('法律資訊', theme),
+            _buildSectionTitle(l10n.legalInformation, theme),
             _buildClickableCard(
               icon: Icons.privacy_tip,
-              title: '隱私權條款',
-              subtitle: '了解我們如何保護您的隱私',
+              title: l10n.privacyPolicyTitle,
+              subtitle: l10n.privacyPolicyDesc,
               onTap: () {
                 Navigator.push(
                   context,
@@ -229,8 +342,8 @@ class _AboutPageState extends State<AboutPage> {
             ),
             _buildClickableCard(
               icon: Icons.description,
-              title: '使用者條款',
-              subtitle: '使用服務前請詳閱本條款',
+              title: l10n.termsOfServiceTitle,
+              subtitle: l10n.termsOfServiceDesc,
               onTap: () {
                 Navigator.push(
                   context,
@@ -244,11 +357,11 @@ class _AboutPageState extends State<AboutPage> {
             const SizedBox(height: 24),
 
             // 開源資訊
-            _buildSectionTitle('開源專案', theme),
+            _buildSectionTitle(l10n.openSourceProject, theme),
             _buildClickableCard(
               icon: Icons.code,
               title: 'NTUT-NPC/tat2_flutter',
-              subtitle: 'TAT 2 原始碼',
+              subtitle: l10n.tatSourceCode,
               onTap: () =>
                   _launchUrl('https://github.com/NTUT-NPC/tat2_flutter'),
             ),
@@ -260,7 +373,7 @@ class _AboutPageState extends State<AboutPage> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Text(
                 '© ${DateTime.now().year} TAT\n'
-                '僅供學習交流使用',
+                '${l10n.forEducationalUseOnly}',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 12,

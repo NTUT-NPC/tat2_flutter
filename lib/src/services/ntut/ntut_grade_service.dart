@@ -150,10 +150,10 @@ class NtutGradeService {
     }
   }
 
-  /// 取得成績
+  /// 取得成績（中英文雙語版本）
   Future<List<Map<String, dynamic>>> getGrades() async {
     try {
-      print('[NTUT Grade] 獲取成績資料');
+      print('[NTUT Grade] 獲取中英文成績資料');
       
       final loginSuccess = await _loginToScoreSystem();
       if (!loginSuccess) {
@@ -173,6 +173,7 @@ class NtutGradeService {
       
       scoreDio.interceptors.add(CookieManager(_cookieJar));
       
+      // 請求成績（包含中英文）
       final response = await scoreDio.get(
         '/StuQuery/QryScore.jsp',
         queryParameters: {'format': '-2'},
@@ -183,6 +184,8 @@ class NtutGradeService {
       }
       
       final htmlDoc = html_parser.parse(response.data);
+      
+      // 解析成績（包含中英文名稱）
       final grades = <Map<String, dynamic>>[];
       
       final titleNodes = htmlDoc.querySelectorAll('input[type=submit]');
@@ -223,7 +226,8 @@ class NtutGradeService {
           
           try {
             final courseId = cells[0].text.replaceAll(RegExp(r'[\s\n]'), '');
-            final courseName = cells[2].text.replaceAll(RegExp(r'[\s\n]'), '');
+            final courseNameZh = cells[2].text.replaceAll(RegExp(r'[\s\n]'), '');
+            final courseNameEn = cells.length > 3 ? cells[3].text.replaceAll(RegExp(r'\n'), '').trim() : '';
             final creditText = cells[6].text;
             final gradeText = cells[7].text.replaceAll(RegExp(r'[\s\n]'), '');
             
@@ -236,7 +240,9 @@ class NtutGradeService {
             grades.add({
               'semester': semesterCode,
               'courseId': courseId,
-              'courseName': courseName,
+              'courseName': courseNameZh,
+              'courseNameZh': courseNameZh,
+              'courseNameEn': courseNameEn.isNotEmpty ? courseNameEn : null,
               'credits': credits,
               'grade': gradeText,
               'gradePoint': gradePoint,
@@ -295,12 +301,136 @@ class NtutGradeService {
         }
       }
       
-      print('[NTUT Grade] 成功獲取 ${grades.length} 筆成績');
+      // 調試：檢查第一筆成績
+      if (grades.isNotEmpty) {
+        final firstGrade = grades.first;
+        print('[NTUT Grade] 第一筆成績: courseId=${firstGrade['courseId']}, courseNameZh=${firstGrade['courseNameZh']}, courseNameEn=${firstGrade['courseNameEn']}');
+      }
+      
+      print('[NTUT Grade] 成功獲取 ${grades.length} 筆成績（包含中英文）');
       return grades;
     } catch (e) {
       print('[NTUT Grade] 獲取成績失敗: $e');
       return [];
     }
+  }
+  
+  /// 解析成績 HTML（支持中英文）
+  List<Map<String, dynamic>> _parseGradesFromHtml(dynamic htmlDoc, {bool isEnglish = false}) {
+    final grades = <Map<String, dynamic>>[];
+    final titleNodes = htmlDoc.querySelectorAll('input[type=submit]');
+    
+    for (final titleNode in titleNodes) {
+      final semesterText = titleNode.attributes['value'] ?? '';
+      if (semesterText.isEmpty) continue;
+      
+      final semesterParts = semesterText.split(' ');
+      if (semesterParts.length < 4) continue;
+      
+      final year = semesterParts[0];
+      final semester = semesterParts[3];
+      final semesterCode = '$year-$semester';
+      
+      final siblingOfTitle = titleNode.parent?.localName == 'form'
+          ? titleNode.parent?.nextElementSibling
+          : titleNode.nextElementSibling;
+      
+      if (siblingOfTitle == null || siblingOfTitle.localName != 'table') continue;
+      
+      final scoreRows = siblingOfTitle.querySelectorAll('tr');
+      
+      int scoreEnd = scoreRows.length - 5;
+      for (int i = scoreRows.length - 1; i >= 0; i--) {
+        final text = scoreRows[i].text.replaceAll(RegExp(r'[\n\s]'), '') ?? '';
+        if (text.contains('ThisSemesterScore')) {
+          scoreEnd = i;
+          break;
+        }
+      }
+      
+      for (int j = 1; j < scoreEnd - 1 && j < scoreRows.length; j++) {
+        final scoreRow = scoreRows[j];
+        final cells = scoreRow.querySelectorAll('th');
+        
+        if (cells.length < 8) continue;
+        
+        try {
+          final courseId = cells[0].text.replaceAll(RegExp(r'[\s\n]'), '');
+          final courseName = cells[2].text.replaceAll(RegExp(r'[\s\n]'), '');
+          final creditText = cells.length > 6 ? cells[6].text : '';
+          final gradeText = cells.length > 7 ? cells[7].text.replaceAll(RegExp(r'[\s\n]'), '') : '';
+          
+          final creditMatch = RegExp(r'(\d+(?:\.\d+)?)').firstMatch(creditText);
+          final credits = creditMatch != null ? double.tryParse(creditMatch.group(1)!) : null;
+          
+          final gradePoint = _convertGradeToPoint(gradeText);
+          final score = _convertGradeToScore(gradeText);
+          
+          grades.add({
+            'semester': semesterCode,
+            'courseId': courseId,
+            'courseName': courseName,
+            if (isEnglish) 'courseNameEn': courseName,
+            if (!isEnglish) 'courseNameZh': courseName,
+            'credits': credits,
+            'grade': gradeText,
+            'gradePoint': gradePoint,
+            'score': score,
+          });
+        } catch (e) {
+          debugPrint('[NTUT Grade] 解析成績失敗: $e');
+          continue;
+        }
+      }
+    }
+    
+    return grades;
+  }
+  
+  /// 合併中英文成績數據
+  List<Map<String, dynamic>> _mergeGradesByLanguage(
+    List<Map<String, dynamic>> zhGrades,
+    List<Map<String, dynamic>> enGrades,
+  ) {
+    print('[NTUT Grade] 開始合併成績: ${zhGrades.length} 筆中文, ${enGrades.length} 筆英文');
+    
+    if (enGrades.isEmpty) {
+      print('[NTUT Grade] 英文成績為空，直接返回中文成績');
+      return zhGrades;
+    }
+
+    // 建立英文成績的映射表（以課號為 key）
+    final enGradeMap = <String, Map<String, dynamic>>{};
+    for (final enGrade in enGrades) {
+      final courseId = enGrade['courseId']?.toString() ?? '';
+      if (courseId.isNotEmpty) {
+        enGradeMap[courseId] = enGrade;
+      }
+    }
+    
+    print('[NTUT Grade] 英文成績映射表建立完成: ${enGradeMap.length} 筆');
+
+    // 合併中英文數據
+    final mergedGrades = <Map<String, dynamic>>[];
+    int matchedCount = 0;
+    
+    for (final zhGrade in zhGrades) {
+      final courseId = zhGrade['courseId']?.toString() ?? '';
+      final merged = Map<String, dynamic>.from(zhGrade);
+      
+      // 如果找到對應的英文成績，添加英文名稱
+      if (courseId.isNotEmpty && enGradeMap.containsKey(courseId)) {
+        final enGrade = enGradeMap[courseId]!;
+        merged['courseNameEn'] = enGrade['courseName'] ?? enGrade['courseNameEn'] ?? '';
+        matchedCount++;
+      }
+      
+      mergedGrades.add(merged);
+    }
+    
+    print('[NTUT Grade] 合併完成: ${matchedCount} 筆成功匹配英文名稱');
+
+    return mergedGrades;
   }
 
   /// 取得排名資料

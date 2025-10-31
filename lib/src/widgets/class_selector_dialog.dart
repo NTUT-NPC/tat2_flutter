@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/ntut_api_service.dart';
+import '../l10n/app_localizations.dart';
 
 /// 班級/學程選擇器對話框
 /// 整合三種查詢方式：
@@ -28,6 +29,8 @@ class _ClassSelectorDialogState extends State<ClassSelectorDialog> {
   
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    
     return Dialog(
       child: Container(
         width: MediaQuery.of(context).size.width * 0.9,
@@ -38,9 +41,9 @@ class _ClassSelectorDialogState extends State<ClassSelectorDialog> {
             // 標題
             Row(
               children: [
-                const Text(
-                  '選擇班級或學程',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                Text(
+                  l10n.selectClassOrProgramTitle,
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 const Spacer(),
                 IconButton(
@@ -58,14 +61,14 @@ class _ClassSelectorDialogState extends State<ClassSelectorDialog> {
                 setState(() => _selectedTabIndex = index);
               },
               borderRadius: BorderRadius.circular(8),
-              children: const [
+              children: [
                 Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                  child: Text('班級'),
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                  child: Text(l10n.classCategory),
                 ),
                 Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                  child: Text('微學程'),
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                  child: Text(l10n.microProgram),
                 ),
               ],
             ),
@@ -143,9 +146,10 @@ class _ClassSelectorState extends State<_ClassSelector> {
       } else {
         setState(() => _isLoading = false);
         if (mounted) {
+          final l10n = AppLocalizations.of(context);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('載入學院結構失敗'),
+              content: Text(l10n.loadCollegeStructureFailed),
               backgroundColor: Theme.of(context).colorScheme.primary,
               behavior: SnackBarBehavior.floating,
               duration: const Duration(seconds: 2),
@@ -157,8 +161,9 @@ class _ClassSelectorState extends State<_ClassSelector> {
       debugPrint('[ClassSelector] 載入學院結構失敗: $e');
       setState(() => _isLoading = false);
       if (mounted) {
+        final l10n = AppLocalizations.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('錯誤:$e')),
+          SnackBar(content: Text(l10n.errorWithValue(e.toString()))),
         );
       }
     }
@@ -212,16 +217,18 @@ class _ClassSelectorState extends State<_ClassSelector> {
         Navigator.of(context).pop();
       } else {
         if (mounted) {
+          final l10n = AppLocalizations.of(context);
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('$gradeName 沒有開課資料')),
+            SnackBar(content: Text(l10n.noCourseData2(gradeName))),
           );
         }
       }
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
+        final l10n = AppLocalizations.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('載入課程失敗：$e')),
+          SnackBar(content: Text(l10n.loadCourseFailedWithError(e.toString()))),
         );
       }
     }
@@ -229,6 +236,8 @@ class _ClassSelectorState extends State<_ClassSelector> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -238,13 +247,13 @@ class _ClassSelectorState extends State<_ClassSelector> {
       children: [
         // 學院下拉選單
         DropdownButtonFormField<String>(
-          decoration: const InputDecoration(
-            labelText: '學院',
-            border: OutlineInputBorder(),
-            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: InputDecoration(
+            labelText: l10n.college,
+            border: const OutlineInputBorder(),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           ),
           value: _selectedCollege,
-          hint: const Text('請選擇學院'),
+          hint: Text(l10n.pleaseSelectCollege),
           items: _colleges.map((college) {
             final collegeName = college['name']?.toString() ?? '';
             return DropdownMenuItem<String>(
@@ -262,13 +271,13 @@ class _ClassSelectorState extends State<_ClassSelector> {
         
         // 系所下拉選單
         DropdownButtonFormField<String>(
-          decoration: const InputDecoration(
-            labelText: '系所',
-            border: OutlineInputBorder(),
-            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: InputDecoration(
+            labelText: l10n.departmentOrProgram,
+            border: const OutlineInputBorder(),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           ),
           value: _selectedDepartment,
-          hint: const Text('請先選擇學院'),
+          hint: Text(l10n.pleaseSelectCollegeFirst),
           items: _departments.map((dept) {
             final deptName = dept['name']?.toString() ?? '';
             return DropdownMenuItem<String>(
@@ -294,10 +303,10 @@ class _ClassSelectorState extends State<_ClassSelector> {
                     border: Border.all(color: Colors.grey.shade300),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Center(
+                  child: Center(
                     child: Text(
-                      '請先選擇系所',
-                      style: TextStyle(color: Colors.grey),
+                      l10n.pleaseSelectCollegeFirst,
+                      style: const TextStyle(color: Colors.grey),
                     ),
                   ),
                 )
@@ -388,9 +397,10 @@ class _ProgramSelectorState extends State<_ProgramSelector> {
         debugPrint('[ClassSelector] structure 為空或沒有 programs 鍵');
         setState(() => _isLoading = false);
         if (mounted) {
+          final l10n = AppLocalizations.of(context);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('載入微學程列表失敗'),
+              content: Text(l10n.loadMicroProgramsFailed),
               backgroundColor: Theme.of(context).colorScheme.primary,
               behavior: SnackBarBehavior.floating,
               duration: const Duration(seconds: 2),
@@ -403,8 +413,9 @@ class _ProgramSelectorState extends State<_ProgramSelector> {
       debugPrint('[ClassSelector] Stack trace: $stackTrace');
       setState(() => _isLoading = false);
       if (mounted) {
+        final l10n = AppLocalizations.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('錯誤:$e')),
+          SnackBar(content: Text(l10n.errorWithValue(e.toString()))),
         );
       }
     }
@@ -429,16 +440,18 @@ class _ProgramSelectorState extends State<_ProgramSelector> {
         Navigator.of(context).pop();
       } else {
         if (mounted) {
+          final l10n = AppLocalizations.of(context);
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('$programName 沒有開課資料')),
+            SnackBar(content: Text(l10n.noCourseData2(programName))),
           );
         }
       }
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
+        final l10n = AppLocalizations.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('載入課程失敗：$e')),
+          SnackBar(content: Text(l10n.loadCourseFailedWithError(e.toString()))),
         );
       }
     }
@@ -454,6 +467,8 @@ class _ProgramSelectorState extends State<_ProgramSelector> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -463,7 +478,7 @@ class _ProgramSelectorState extends State<_ProgramSelector> {
         // 搜尋框
         TextField(
           decoration: InputDecoration(
-            hintText: '搜尋學程名稱',
+            hintText: l10n.searchProgramName,
             prefixIcon: const Icon(Icons.search),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
@@ -493,7 +508,7 @@ class _ProgramSelectorState extends State<_ProgramSelector> {
                 
                 return ListTile(
                   title: Text(programName),
-                  subtitle: Text('$courseCount 門課程'),
+                  subtitle: Text(l10n.coursesCount(courseCount)),
                   trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                   onTap: () => _loadCoursesByProgram(programId, programName),
                 );

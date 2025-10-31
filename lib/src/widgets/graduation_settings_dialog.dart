@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../models/course_credit_models.dart';
 import '../services/credits_service.dart';
 import '../core/auth/auth_manager.dart';
+import '../l10n/app_localizations.dart';
 
 /// 畢業學分標準設定對話框（M3 設計，功能完全按照 TAT 的 GraduationPicker）
 class GraduationSettingsDialog extends StatefulWidget {
@@ -207,18 +208,18 @@ class _GraduationSettingsDialogState extends State<GraduationSettingsDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('畢業學分標準設定'),
+      title: Text(AppLocalizations.of(context).graduationStandardSettings),
       content: _buildContent(),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('取消'),
+          child: Text(AppLocalizations.of(context).cancel),
         ),
         FilledButton(
           onPressed: _graduationInfo != null && _graduationInfo!.isSelected
               ? () => Navigator.of(context).pop(_graduationInfo)
               : null,
-          child: const Text('儲存'),
+          child: Text(AppLocalizations.of(context).save),
         ),
       ],
     );
@@ -260,9 +261,9 @@ class _GraduationSettingsDialogState extends State<GraduationSettingsDialog> {
         children: [
           // 學年度下拉選單
           DropdownButtonFormField<String>(
-            decoration: const InputDecoration(
-              labelText: '學年度',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              labelText: AppLocalizations.of(context).academicYear,
+              border: const OutlineInputBorder(),
             ),
             value: _selectedYear,
             items: _yearList.map((year) {
@@ -290,7 +291,7 @@ class _GraduationSettingsDialogState extends State<GraduationSettingsDialog> {
           // 學制下拉選單
           DropdownButtonFormField<String>(
             decoration: InputDecoration(
-              labelText: '學制',
+              labelText: AppLocalizations.of(context).educationSystem,
               border: const OutlineInputBorder(),
               suffixIcon: _isLoadingDivisions
                   ? const Padding(
@@ -331,7 +332,7 @@ class _GraduationSettingsDialogState extends State<GraduationSettingsDialog> {
           // 系所下拉選單
           DropdownButtonFormField<String>(
             decoration: InputDecoration(
-              labelText: '系所',
+              labelText: AppLocalizations.of(context).departmentOrProgram,
               border: const OutlineInputBorder(),
               suffixIcon: _isLoadingDepartments
                   ? const Padding(

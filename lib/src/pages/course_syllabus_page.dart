@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../services/ntut_api_service.dart';
 import '../services/auth_service.dart';
+import '../l10n/app_localizations.dart';
 
 /// 課程大綱頁面 - 原生顯示課程大綱
 class CourseSyllabusPage extends StatefulWidget {
@@ -175,13 +176,14 @@ class _CourseSyllabusPageState extends State<CourseSyllabusPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.courseInfo['courseName'] ?? '課程大綱'),
+        title: Text(widget.courseInfo['courseName'] ?? l10n.courseSyllabus),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            tooltip: '重新載入',
+            tooltip: l10n.reload,
             onPressed: () => _loadSyllabus(forceRefresh: true),
           ),
         ],
@@ -191,14 +193,15 @@ class _CourseSyllabusPageState extends State<CourseSyllabusPage> {
   }
 
   Widget _buildBody() {
+    final l10n = AppLocalizations.of(context);
     if (_isLoading) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('載入課程大綱中...'),
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            Text(l10n.loadingSyllabus),
           ],
         ),
       );
@@ -214,7 +217,7 @@ class _CourseSyllabusPageState extends State<CourseSyllabusPage> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 32),
               child: Text(
-                '載入失敗：$_error',
+                l10n.loadFailedWith(_error),
                 textAlign: TextAlign.center,
               ),
             ),
@@ -222,14 +225,14 @@ class _CourseSyllabusPageState extends State<CourseSyllabusPage> {
             if (!_error.contains('請重新登入'))
               ElevatedButton(
                 onPressed: () => _loadSyllabus(forceRefresh: true),
-                child: const Text('重試'),
+                child: Text(l10n.retry),
               ),
             if (_error.contains('請重新登入'))
               ElevatedButton(
                 onPressed: () {
                   Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
                 },
-                child: const Text('前往登入'),
+                child: Text(l10n.goToLogin),
               ),
           ],
         ),
@@ -237,13 +240,13 @@ class _CourseSyllabusPageState extends State<CourseSyllabusPage> {
     }
 
     if (_syllabus == null) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.inbox, size: 64, color: Colors.grey),
-            SizedBox(height: 16),
-            Text('無課程大綱資料'),
+            const Icon(Icons.inbox, size: 64, color: Colors.grey),
+            const SizedBox(height: 16),
+            Text(l10n.noSyllabusData),
           ],
         ),
       );
@@ -256,26 +259,26 @@ class _CourseSyllabusPageState extends State<CourseSyllabusPage> {
         children: [
           // 基本資訊
           _buildSection(
-            title: '基本資訊',
+            title: l10n.basicInfo,
             icon: Icons.info_outline,
             children: [
-              _buildInfoRow('課程名稱', _syllabus!['courseName']?.toString()),
-              _buildInfoRow('課號', _syllabus!['courseId']?.toString()),
+              _buildInfoRow(l10n.courseName, _syllabus!['courseName']?.toString()),
+              _buildInfoRow(l10n.courseId, _syllabus!['courseId']?.toString()),
               Row(
                 children: [
                   Expanded(
-                    child: _buildInfoRow('學分', _syllabus!['credits']?.toString()),
+                    child: _buildInfoRow(l10n.credit, _syllabus!['credits']?.toString()),
                   ),
                   Expanded(
-                    child: _buildInfoRow('時數', _syllabus!['hours']?.toString()),
+                    child: _buildInfoRow(l10n.hours, _syllabus!['hours']?.toString()),
                   ),
                 ],
               ),
-              _buildInfoRow('授課教師', _syllabus!['instructor']?.toString()),
-              _buildInfoRow('教室', _syllabus!['classroom']?.toString()),
-              _buildInfoRow('授課語言', _syllabus!['language']?.toString()),
+              _buildInfoRow(l10n.teacherName, _syllabus!['instructor']?.toString()),
+              _buildInfoRow(l10n.room, _syllabus!['classroom']?.toString()),
+              _buildInfoRow(l10n.teachingLanguage, _syllabus!['language']?.toString()),
               if (_syllabus!['department']?.toString().isNotEmpty == true)
-                _buildInfoRow('開課系所', _syllabus!['department']?.toString()),
+                _buildInfoRow(l10n.department, _syllabus!['department']?.toString()),
             ],
           ),
           const SizedBox(height: 24),
@@ -283,7 +286,7 @@ class _CourseSyllabusPageState extends State<CourseSyllabusPage> {
           // 課程目標
           if (_syllabus!['objective']?.toString().isNotEmpty == true) ...[
             _buildSection(
-              title: '課程目標',
+              title: l10n.courseObjective,
               icon: Icons.flag_outlined,
               children: [
                 Text(
@@ -302,7 +305,7 @@ class _CourseSyllabusPageState extends State<CourseSyllabusPage> {
           // 課程大綱
           if (_syllabus!['outline']?.toString().isNotEmpty == true) ...[
             _buildSection(
-              title: '課程大綱',
+              title: l10n.courseOutline,
               icon: Icons.description_outlined,
               children: [
                 Text(
@@ -321,7 +324,7 @@ class _CourseSyllabusPageState extends State<CourseSyllabusPage> {
           // 老師聯絡資訊
           if (_syllabus!['textbooks']?.toString().isNotEmpty == true) ...[
             _buildSection(
-              title: '老師聯絡資訊',
+              title: l10n.teacherContactInfo,
               icon: Icons.contact_mail_outlined,
               children: [
                 Text(
@@ -340,7 +343,7 @@ class _CourseSyllabusPageState extends State<CourseSyllabusPage> {
           // 參考書目
           if (_syllabus!['references']?.toString().isNotEmpty == true) ...[
             _buildSection(
-              title: '參考書目',
+              title: l10n.referenceBooks,
               icon: Icons.library_books_outlined,
               children: [
                 Text(
@@ -359,7 +362,7 @@ class _CourseSyllabusPageState extends State<CourseSyllabusPage> {
           // 評量方式
           if (_syllabus!['gradingCriteria']?.toString().isNotEmpty == true) ...[
             _buildSection(
-              title: '評量方式',
+              title: l10n.gradingMethod,
               icon: Icons.assignment_outlined,
               children: [
                 Text(
@@ -378,7 +381,7 @@ class _CourseSyllabusPageState extends State<CourseSyllabusPage> {
           // 評量標準
           if (_syllabus!['schedule']?.toString().isNotEmpty == true) ...[
             _buildSection(
-              title: '評量標準',
+              title: l10n.gradingStandard,
               icon: Icons.rule_outlined,
               children: [
                 Text(

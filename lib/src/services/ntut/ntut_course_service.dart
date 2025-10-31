@@ -269,7 +269,7 @@ class NtutCourseService {
     }
   }
 
-  /// 取得課表
+  /// 取得課表（中英文雙語版本）
   /// 
   /// [year] 學年度
   /// [semester] 學期
@@ -289,7 +289,7 @@ class NtutCourseService {
     }
 
     try {
-      print('[NTUT Course] 獲取課表: $year-$semester');
+      print('[NTUT Course] 獲取中英文課表: $year-$semester');
 
       final courseDio = Dio(BaseOptions(
         baseUrl: courseBaseUrl,
@@ -304,26 +304,74 @@ class NtutCourseService {
       
       courseDio.interceptors.add(CookieManager(_cookieJar));
 
-      final response = await courseDio.get(
-        '/course/tw/Select.jsp',
-        queryParameters: {
-          'format': '-2',
-          'code': _authService.userIdentifier,
-          'year': year,
-          'sem': semester.toString(),
-        },
-      );
+      // 同時請求中文和英文課表
+      final futures = await Future.wait([
+        // 中文課表
+        courseDio.get(
+          '/course/tw/Select.jsp',
+          queryParameters: {
+            'format': '-2',
+            'code': _authService.userIdentifier,
+            'year': year,
+            'sem': semester.toString(),
+          },
+        ),
+        // 英文課表
+        courseDio.get(
+          '/course/en/Select.jsp',
+          queryParameters: {
+            'format': '-2',
+            'code': _authService.userIdentifier,
+            'year': year,
+            'sem': semester.toString(),
+          },
+        ),
+      ], eagerError: false);
 
-      if (response.statusCode == 200) {
-        final htmlContent = response.data.toString();
-        
+      final zhResponse = futures[0];
+      final enResponse = futures[1];
+
+      List<Map<String, dynamic>> zhCourses = [];
+      List<Map<String, dynamic>> enCourses = [];
+
+      // 解析中文課表
+      if (zhResponse.statusCode == 200) {
+        final htmlContent = zhResponse.data.toString();
+        print('[NTUT Course] 中文課表狀態碼 200，內容長度: ${htmlContent.length}');
         if (htmlContent.contains('姓名')) {
-          final courses = _parseCourseTableHtml(htmlContent);
-          print('[NTUT Course] 成功解析 ${courses.length} 門課程');
-          return courses;
+          print('[NTUT Course] 中文課表包含"姓名"關鍵字，開始解析');
+          zhCourses = _parseCourseTableHtml(htmlContent, isEnglish: false);
+          print('[NTUT Course] 成功解析 ${zhCourses.length} 門中文課程');
+        } else {
+          print('[NTUT Course] 中文課表不包含"姓名"關鍵字，可能沒有登入或課表為空');
         }
+      } else {
+        print('[NTUT Course] 中文課表狀態碼: ${zhResponse.statusCode}');
       }
-      return [];
+
+      // 解析英文課表
+      if (enResponse.statusCode == 200) {
+        final htmlContent = enResponse.data.toString();
+        print('[NTUT Course] 英文課表狀態碼 200，內容長度: ${htmlContent.length}');
+        if (htmlContent.contains('Name')) {
+          print('[NTUT Course] 英文課表包含"Name"關鍵字，開始解析');
+          enCourses = _parseCourseTableHtml(htmlContent, isEnglish: true);
+          print('[NTUT Course] 成功解析 ${enCourses.length} 門英文課程');
+        } else {
+          print('[NTUT Course] 英文課表不包含"Name"關鍵字，可能沒有登入或課表為空');
+        }
+      } else {
+        print('[NTUT Course] 英文課表狀態碼: ${enResponse.statusCode}');
+      }
+
+      // 合併中英文課程數據
+      if (zhCourses.isEmpty) {
+        return enCourses;
+      }
+      
+      final mergedCourses = _mergeCoursesByLanguage(zhCourses, enCourses);
+      print('[NTUT Course] 合併後共 ${mergedCourses.length} 門課程');
+      return mergedCourses;
     } catch (e) {
       print('[NTUT Course] 獲取課表失敗: $e');
       rethrow;
@@ -331,7 +379,8 @@ class NtutCourseService {
   }
 
   /// 解析課表 HTML
-  List<Map<String, dynamic>> _parseCourseTableHtml(String html) {
+  /// [isEnglish] 是否為英文版課表
+  List<Map<String, dynamic>> _parseCourseTableHtml(String html, {bool isEnglish = false}) {
     try {
       final document = html_parser.parse(html);
       final courses = <Map<String, dynamic>>[];
@@ -397,6 +446,8 @@ class NtutCourseService {
           final course = {
             'courseId': courseId.isEmpty ? 'NO_ID_${courseName.hashCode}' : courseId,
             'courseName': courseName,
+            'courseNameZh': isEnglish ? '' : courseName,
+            'courseNameEn': isEnglish ? courseName : '',
             'step': step,
             'credits': double.tryParse(credits) ?? 0.0,
             'hours': int.tryParse(hours) ?? 0,
@@ -422,6 +473,74 @@ class NtutCourseService {
       print('[NTUT Course] 解析課表 HTML 失敗: $e');
       return [];
     }
+  }
+
+  /// 合併中英文課程數據
+  /// 根據課號匹配中英文課程，將英文名稱合併到中文課程中
+  List<Map<String, dynamic>> _mergeCoursesByLanguage(
+    List<Map<String, dynamic>> zhCourses,
+    List<Map<String, dynamic>> enCourses,
+  ) {
+    if (enCourses.isEmpty) {
+      // 沒有英文數據，只返回中文數據（確保有 courseNameZh）
+      return zhCourses.map((course) {
+        if (!course.containsKey('courseNameZh') && course.containsKey('courseName')) {
+          course['courseNameZh'] = course['courseName'];
+        }
+        return course;
+      }).toList();
+    }
+
+    // 建立英文課程的映射表（以課號為 key）
+    final enCourseMap = <String, Map<String, dynamic>>{};
+    // 建立沒有課號的課程映射表（以上課時間為 key，用於匹配特殊課程如班週會）
+    final enCourseBySchedule = <String, Map<String, dynamic>>{};
+    
+    for (final enCourse in enCourses) {
+      final courseId = enCourse['courseId']?.toString() ?? '';
+      
+      // 有正常課號的課程
+      if (courseId.isNotEmpty && !courseId.startsWith('NO_ID_')) {
+        enCourseMap[courseId] = enCourse;
+      } 
+      // 沒有課號的特殊課程（如班週會），用上課時間作為 key
+      else {
+        final schedule = enCourse['schedule']?.toString() ?? '';
+        if (schedule.isNotEmpty && schedule != '{}') {
+          enCourseBySchedule[schedule] = enCourse;
+        }
+      }
+    }
+
+    // 合併中英文數據
+    final mergedCourses = <Map<String, dynamic>>[];
+    for (final zhCourse in zhCourses) {
+      final courseId = zhCourse['courseId']?.toString() ?? '';
+      final merged = Map<String, dynamic>.from(zhCourse);
+      
+      // 確保有 courseNameZh
+      if (!merged.containsKey('courseNameZh') && merged.containsKey('courseName')) {
+        merged['courseNameZh'] = merged['courseName'];
+      }
+      
+      // 方式 1: 透過課號匹配
+      if (courseId.isNotEmpty && !courseId.startsWith('NO_ID_') && enCourseMap.containsKey(courseId)) {
+        final enCourse = enCourseMap[courseId]!;
+        merged['courseNameEn'] = enCourse['courseName'] ?? enCourse['courseNameEn'] ?? '';
+      }
+      // 方式 2: 沒有課號的課程，透過上課時間匹配（如班週會）
+      else if (courseId.startsWith('NO_ID_')) {
+        final schedule = zhCourse['schedule']?.toString() ?? '';
+        if (schedule.isNotEmpty && enCourseBySchedule.containsKey(schedule)) {
+          final enCourse = enCourseBySchedule[schedule]!;
+          merged['courseNameEn'] = enCourse['courseName'] ?? enCourse['courseNameEn'] ?? '';
+        }
+      }
+      
+      mergedCourses.add(merged);
+    }
+
+    return mergedCourses;
   }
 
   /// 取得課程大綱

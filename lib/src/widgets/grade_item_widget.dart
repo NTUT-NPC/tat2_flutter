@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/grade.dart';
+import '../l10n/app_localizations.dart';
+import '../helpers/course_data_helper.dart';
 
 /// 單筆成績項目 Widget
 class GradeItemWidget extends StatelessWidget {
@@ -72,7 +74,7 @@ class GradeItemWidget extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    grade.courseName,
+                    CourseDataHelper.getGradeLocalizedName(context, grade),
                     style: Theme.of(context).textTheme.bodyLarge,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -128,6 +130,8 @@ class GradeListHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
       decoration: BoxDecoration(
@@ -144,7 +148,7 @@ class GradeListHeader extends StatelessWidget {
           Expanded(
             flex: 3,
             child: Text(
-              '課程名稱',
+              l10n.courseName,
               style: Theme.of(context).textTheme.labelMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -154,7 +158,7 @@ class GradeListHeader extends StatelessWidget {
           Expanded(
             flex: 1,
             child: Text(
-              '學分',
+              l10n.credit,
               style: Theme.of(context).textTheme.labelMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -165,7 +169,7 @@ class GradeListHeader extends StatelessWidget {
           SizedBox(
             width: 60,
             child: Text(
-              '成績',
+              l10n.grade,
               style: Theme.of(context).textTheme.labelMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
