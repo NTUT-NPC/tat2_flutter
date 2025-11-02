@@ -181,6 +181,26 @@ jobs:
         if: env.SHOULD_SIGN_IOS == 'true'
         run: |
           echo "${{ secrets.IOS_EXPORT_OPTIONS_PLIST_BASE64 }}" | base64 --decode > ios/ExportOptions.plist
+      - name: Force Manual Signing in Xcode Project File
+        if: env.SHOULD_SIGN_IOS == 'true'
+        env:
+          PROV_PROFILE_NAME: ${{ secrets.IOS_PROVISIONING_PROFILE_NAME }}
+          SIGNING_IDENTITY: ${{ secrets.IOS_SIGNING_IDENTITY }}
+        run: |
+          PROJECT_FILE="ios/Runner.xcodeproj/project.pbxproj"
+          
+          echo "Forcing manual signing for Release configuration..."
+          
+
+          sed -i '' 's/"CODE_SIGN_IDENTITY\[sdk=iphoneos\*\]" = "iPhone Developer";/CODE_SIGN_IDENTITY = "'"$SIGNING_IDENTITY"'";/g' $PROJECT_FILE
+
+          sed -i '' '/COPY_PHASE_STRIP = NO;/a\
+            CODE_SIGN_STYLE = Manual;\
+            DEVELOPMENT_TEAM = "";\
+            PROVISIONING_PROFILE_SPECIFIER = "'"$PROV_PROFILE_NAME"'";
+          ' $PROJECT_FILE
+          
+          echo "Project file modified for CI."
 
       - name: Check Installed Signing Files
         if: env.SHOULD_SIGN_IOS == 'true'
@@ -196,7 +216,7 @@ jobs:
           echo "--- 3. CHECKING EXPORT OPTIONS PLIST ---"
           echo "Displaying contents of ios/ExportOptions.plist:"
           cat ios/ExportOptions.plist
-          
+
       - name: Build iOS IPA (Signed)
         if: env.SHOULD_SIGN_IOS == 'true'
         run: flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
