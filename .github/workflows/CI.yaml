@@ -177,10 +177,13 @@ jobs:
           p12-file-base64: ${{ secrets.IOS_BUILD_CERTIFICATE_BASE64 }}
           p12-password: ${{ secrets.IOS_P12_PASSWORD }}
 
+      - name: Create ExportOptions.plist
+        if: env.SHOULD_SIGN_IOS == 'true'
+        run: |
+          echo "${{ secrets.IOS_EXPORT_OPTIONS_PLIST_BASE64 }}" | base64 --decode > ios/ExportOptions.plist
+
       - name: Build iOS IPA (Signed)
         if: env.SHOULD_SIGN_IOS == 'true'
-        env:
-          APPLE_TEAM_ID: ${{ secrets.IOS_APPLE_TEAM_ID }}
         run: flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
 
       - name: Build iOS IPA (Unsigned)
