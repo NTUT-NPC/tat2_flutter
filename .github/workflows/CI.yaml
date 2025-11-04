@@ -115,7 +115,7 @@ jobs:
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: release-apk-${{ env.BUILD_TIMESTAMP }}
+          name: release-apk-${{ env.RELEASE_NAME }}-${{ env.BUILD_TIMESTAMP }}
           path: build/app/outputs/flutter-apk/app-debug.apk
 
 #      - name: Create Pre-release and Upload Assets
@@ -155,7 +155,14 @@ jobs:
       - name: update build numbers
         run: |
           dart ./scripts/update_version.dart --ci
-            # Updating pod files
+      - name: Get App Version
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | cut -d ' ' -f 2)
+          BASE_VERSION=$(echo $VERSION | cut -d '+' -f 1)
+          BUILD_NUMBER=$(echo $VERSION | cut -d '+' -f 2)
+          echo "RELEASE_NAME=$BASE_VERSION ($BUILD_NUMBER)" >> $GITHUB_ENV
+          
+      # Updating pod files
       - name: Pod file update
         run: |
           cd ios
@@ -208,24 +215,25 @@ jobs:
         if: env.SHOULD_SIGN_IOS == 'true'
         run: flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
 
+        # IPA file detection.
+      - name: Detect path for ipa file
+        if: env.SHOULD_SIGN_IOS == 'true'
+        run: |
+          echo "IPA_PATH=$(find build/ios/ipa -type f -name '*.ipa')" >> $GITHUB_ENV
       - name: 'Upload app to TestFlight'
         uses: apple-actions/upload-testflight-build@v3
         with: 
-          app-path: 'build/ios/ipa/*.ipa' 
+          app-path: '${{ env.IPA_PATH }}' 
           issuer-id: ${{ secrets.IOS_APPSTORE_API_ISSUER_ID}}
           api-key-id: ${{ secrets.IOS_APPSTORE_API_KEY_ID }}
           api-private-key: ${{ secrets.IOS_APPSTORE_API_PRIVATE_KEY }}
 
 
-      # IPA file detection.
-      - name: Detect path for ipa file
-        if: env.SHOULD_SIGN_IOS == 'true'
-        run: |
-          echo "IPA_PATH=$(find build/ios/ipa -type f -name '*.ipa')" >> $GITHUB_ENV
+
 
       - name: Upload IPA Artifact
         if: env.SHOULD_SIGN_IOS == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: release-ipa-${{ env.BUILD_TIMESTAMP }}
+          name: release-ipa--${{ env.RELEASE_NAME }}-${{ env.BUILD_TIMESTAMP }}
           path: build/ios/ipa/*.ipa
