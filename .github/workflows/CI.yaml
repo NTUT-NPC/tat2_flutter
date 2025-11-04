@@ -224,13 +224,13 @@ jobs:
       #     provisioning-profile-base64: ${{ secrets.BUILD_PROVISION_PROFILE_BASE64 }}
       #     keychain-password: ${{ secrets.IOS_GITHUB_KEYCHAIN_PASSWORD }}
 
-      - name: Build iOS IPA (Signed)
-        if: env.SHOULD_SIGN_IOS == 'true'
-        run: flutter build ipa --release --export-options-plist=ios/GithubActionsExportOptions.plist
+      # - name: Build iOS IPA (Signed)
+      #   if: env.SHOULD_SIGN_IOS == 'true'
+      #   run: flutter build ipa --release --export-options-plist=ios/GithubActionsExportOptions.plist
 
-      # - name: Build iOS IPA (Unsigned)
-      #   if: env.SHOULD_SIGN_IOS == 'false'
-      #   run: flutter build ipa --debug --no-codesign
+      - name: Build iOS IPA 
+        # if: env.SHOULD_SIGN_IOS == 'false'
+        run: flutter build ipa --release --no-codesign
 
         # Create AppStoreConnectAPI key
       - name: Create App Store Connect API Private Key in `pwd`/private_keys
