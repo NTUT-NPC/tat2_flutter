@@ -208,20 +208,21 @@ jobs:
         if: env.SHOULD_SIGN_IOS == 'true'
         run: flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
 
+        # IPA file detection.
+      - name: Detect path for ipa file
+        if: env.SHOULD_SIGN_IOS == 'true'
+        run: |
+          echo "IPA_PATH=$(find build/ios/ipa -type f -name '*.ipa')" >> $GITHUB_ENV
       - name: 'Upload app to TestFlight'
         uses: apple-actions/upload-testflight-build@v3
         with: 
-          app-path: 'build/ios/ipa/*.ipa' 
+          app-path: '${{ env.IPA_PATH }}' 
           issuer-id: ${{ secrets.IOS_APPSTORE_API_ISSUER_ID}}
           api-key-id: ${{ secrets.IOS_APPSTORE_API_KEY_ID }}
           api-private-key: ${{ secrets.IOS_APPSTORE_API_PRIVATE_KEY }}
 
 
-      # IPA file detection.
-      - name: Detect path for ipa file
-        if: env.SHOULD_SIGN_IOS == 'true'
-        run: |
-          echo "IPA_PATH=$(find build/ios/ipa -type f -name '*.ipa')" >> $GITHUB_ENV
+
 
       - name: Upload IPA Artifact
         if: env.SHOULD_SIGN_IOS == 'true'
