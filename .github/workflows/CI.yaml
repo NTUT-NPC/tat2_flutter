@@ -197,7 +197,7 @@ jobs:
       - name: Create ExportOptions.plist
         if: env.SHOULD_SIGN_IOS == 'true'
         run: |
-          echo "${{ secrets.IOS_EXPORT_OPTIONS_PLIST_BASE64 }}" | base64 --decode > ios/GithubActionsExportOptions.plist
+          echo "${{ secrets.IOS_EXPORT_OPTIONS_PLIST_BASE64 }}" | base64 --decode > ios/ExportOptions.plist
 
       - name: Check Installed Signing Files
         if: env.SHOULD_SIGN_IOS == 'true'
@@ -211,8 +211,8 @@ jobs:
           security find-identity -v -p codesigning
 
           echo "--- 3. CHECKING EXPORT OPTIONS PLIST ---"
-          echo "Displaying contents of ios/GithubActionsExportOptions.plist:"
-          cat ios/GithubActionsExportOptions.plist
+          echo "Displaying contents of ios/ExportOptions.plist:"
+          cat ios/ExportOptions.plist
 
       # - name: Build iOS IPA 
       #   uses: cedvdb/action-flutter-build-ios@v1
