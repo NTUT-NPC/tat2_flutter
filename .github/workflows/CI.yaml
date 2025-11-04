@@ -155,7 +155,14 @@ jobs:
       - name: update build numbers
         run: |
           dart ./scripts/update_version.dart --ci
-
+            # Updating pod files
+      - name: Pod file update
+        run: |
+          cd ios
+          pod repo update
+          rm -f Podfile.lock
+          pod install
+          cd ..
       - name: Set iOS Signing Flag
         run: |
           if [[ "${{ secrets.IOS_BUILD_CERTIFICATE_BASE64 }}" != "" && ( ("${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.use_signing }}" == "true") || ("${{ github.event_name }}" != "workflow_dispatch" && "${{ env.SIGN_ON_PUSH_IOS }}" == "true") ) ]]; then
@@ -194,6 +201,15 @@ jobs:
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
           cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles    
 
+        # Create AppStoreConnectAPI key
+      - name: Create App Store Connect API Private Key in `pwd`/private_keys
+        if: env.SHOULD_SIGN_IOS == 'true'
+        env:
+          IOS_API_KEY_ID: ${{ secrets.IOS_APPSTORE_API_KEY_ID }}
+          IOS_API_AUTHKEY_P8: ${{ secrets.IOS_APPSTORE_API_AUTHKEY_P8_BASE64 }}
+        run: |
+          mkdir `pwd`/private_keys
+          echo -n "$IOS_API_AUTHKEY_P8" | base64 --decode --output `pwd`/private_keys/AuthKey_$IOS_API_KEY_ID.p8
       - name: Create ExportOptions.plist
         if: env.SHOULD_SIGN_IOS == 'true'
         run: |
@@ -214,49 +230,26 @@ jobs:
           echo "Displaying contents of ios/ExportOptions.plist:"
           cat ios/ExportOptions.plist
 
-      # - name: Build iOS IPA 
-      #   uses: cedvdb/action-flutter-build-ios@v1
-      #   with:
-      #     # always use --export-options-plist=ios/GithubActionsExportOptions.plist
-      #     build-cmd: flutter build ipa --release --flavor dev --export-options-plist=ios/GithubActionsExportOptions.plist
-      #     certificate-base64: ${{ secrets.IOS_BUILD_CERTIFICATE_BASE64 }}
-      #     certificate-password: ${{ secrets.IOS_P12_PASSWORD }}
-      #     provisioning-profile-base64: ${{ secrets.BUILD_PROVISION_PROFILE_BASE64 }}
-      #     keychain-password: ${{ secrets.IOS_GITHUB_KEYCHAIN_PASSWORD }}
-
-      # - name: Build iOS IPA (Signed)
-      #   if: env.SHOULD_SIGN_IOS == 'true'
-      #   run: flutter build ipa --release --export-options-plist=ios/GithubActionsExportOptions.plist
-
       - name: Build iOS IPA 
-        # if: env.SHOULD_SIGN_IOS == 'false'
         run: flutter build ipa --release --no-codesign
 
-        # Create AppStoreConnectAPI key
-      - name: Create App Store Connect API Private Key in `pwd`/private_keys
-        if: env.SHOULD_SIGN_IOS == 'true'
-        env:
-          IOS_API_KEY_ID: ${{ secrets.IOS_APPSTORE_API_KEY_ID }}
-          IOS_API_AUTHKEY_P8: ${{ secrets.IOS_APPSTORE_API_AUTHKEY_P8 }}
-        run: |
-          mkdir `pwd`/private_keys
-          echo -n "$IOS_API_AUTHKEY_P8" | base64 --decode --output `pwd`/private_keys/AuthKey_$IOS_API_KEY_ID.p8
+
 
       # Archive of built data
       - name: Archive by xcodebuild
         if: env.SHOULD_SIGN_IOS == 'true'
 
         env:
-          IOS_API_ISSUER_ID: ${{ secrets.IOS_API_ISSUER_ID }}
-          IOS_API_KEY_ID: ${{ secrets.IOS_API_KEY_ID }}
+          IOS_API_ISSUER_ID: ${{ secrets.IOS_APPSTORE_API_ISSUER_ID }}
+          IOS_API_KEY_ID: ${{ secrets.IOS_APPSTORE_API_KEY_ID }}
         run: xcodebuild archive -workspace ./ios/Runner.xcworkspace -scheme Runner -configuration Release -destination generic/platform=iOS -archivePath ./build/ios/App.xcarchive -allowProvisioningUpdates -authenticationKeyIssuerID $IOS_API_ISSUER_ID -authenticationKeyID $IOS_API_KEY_ID -authenticationKeyPath `pwd`/private_keys/AuthKey_$IOS_API_KEY_ID.p8
 
       # Export of built archives.
       - name: Export by xcodebuild
         if: env.SHOULD_SIGN_IOS == 'true'
         env:
-          IOS_API_ISSUER_ID: ${{ secrets.IOS_API_ISSUER_ID }}
-          IOS_API_KEY_ID: ${{ secrets.IOS_API_KEY_ID }}
+          IOS_API_ISSUER_ID: ${{ secrets.IOS_APPSTORE_API_ISSUER_ID }}
+          IOS_API_KEY_ID: ${{ secrets.IOS_APPSTORE_API_KEY_ID }}
         run: xcodebuild -exportArchive -archivePath ./build/ios/App.xcarchive -exportPath ./build/ios/ipa -exportOptionsPlist ./ios/ExportOptions.plist -allowProvisioningUpdates -authenticationKeyIssuerID $IOS_API_ISSUER_ID -authenticationKeyID $IOS_API_KEY_ID -authenticationKeyPath `pwd`/private_keys/AuthKey_$IOS_API_KEY_ID.p8
 
       # IPA file detection.
