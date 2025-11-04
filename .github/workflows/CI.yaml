@@ -3,7 +3,7 @@ name: Flutter CI
 env:
   TZ: Asia/Taipei
   SIGN_ON_PUSH_ANDROID: 'true'
-  SIGN_ON_PUSH_IOS: 'false'
+  SIGN_ON_PUSH_IOS: 'true'
 
 
 on:
@@ -224,6 +224,7 @@ jobs:
           echo "IPA_PATH=$(find build/ios/ipa -type f -name '*.ipa')" >> $GITHUB_ENV
       - name: 'Upload app to TestFlight'
         uses: apple-actions/upload-testflight-build@v3
+        if: env.SHOULD_SIGN_IOS == 'true'
         with: 
           app-path: '${{ env.IPA_PATH }}' 
           issuer-id: ${{ secrets.IOS_APPSTORE_API_ISSUER_ID}}
