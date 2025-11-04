@@ -163,62 +163,35 @@ jobs:
           else
             echo "SHOULD_SIGN_IOS=false" >> $GITHUB_ENV
           fi
-      - name: Import Apple Development Certificate
-        env:
-          IOS_KEYCHAIN_PASSWORD: ${{ secrets.IOS_GITHUB_KEYCHAIN_PASSWORD }}
-          IOS_CERTIFICATES_P12: ${{ secrets.IOS_BUILD_CERTIFICATE_BASE64 }}
-          IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_P12_PASSWORD }}
-        run: |
-          APPLE_DEVELOPMENT_CERTIFICATE=$RUNNER_TEMP/development_certificate.p12
-          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
-
-          # import certificate from secrets
-          echo -n "$IOS_CERTIFICATES_P12" | base64 --decode --output $APPLE_DEVELOPMENT_CERTIFICATE
-
-          # create temporary keychain
-          security create-keychain -p "$IOS_KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
-          security unlock-keychain -p "$IOS_KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-
-          # import certificate to keychain
-          security import $APPLE_DEVELOPMENT_CERTIFICATE -P "$IOS_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
-          security list-keychain -d user -s $KEYCHAIN_PATH
-
-      - name: Install Provisioning Profile
-        if: env.SHOULD_SIGN_IOS == 'true'
-        run: |
-          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          echo "${{ secrets.IOS_BUILD_PROVISION_PROFILE_BASE64 }}" | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/github_actions.mobileprovision
-      
-      # - name: Import Code Signing Certificates
-      #   if: env.SHOULD_SIGN_IOS == 'true'
-      #   uses: apple-actions/import-codesign-certs@v3
-      #   with:
-      #     p12-file-base64: ${{ secrets.IOS_BUILD_CERTIFICATE_BASE64 }}
-      #     p12-password: ${{ secrets.IOS_P12_PASSWORD }}
-
       - name: Create ExportOptions.plist
         if: env.SHOULD_SIGN_IOS == 'true'
         run: |
           echo "${{ secrets.IOS_EXPORT_OPTIONS_PLIST_BASE64 }}" | base64 --decode > ios/GithubActionsExportOptions.plist
 
-      - name: Check Installed Signing Files
-        if: env.SHOULD_SIGN_IOS == 'true'
-        run: |
-          echo "--- 1. CHECKING PROVISIONING PROFILE ---"
-          echo "Listing files in ~/Library/MobileDevice/Provisioning Profiles/:"
-          ls -la ~/Library/MobileDevice/Provisioning\ Profiles/
+      # - name: Check Installed Signing Files
+      #   if: env.SHOULD_SIGN_IOS == 'true'
+      #   run: |
+      #     echo "--- 1. CHECKING PROVISIONING PROFILE ---"
+      #     echo "Listing files in ~/Library/MobileDevice/Provisioning Profiles/:"
+      #     ls -la ~/Library/MobileDevice/Provisioning\ Profiles/
           
-          echo "--- 2. CHECKING KEYCHAIN IDENTITIES ---"
-          echo "Looking for 'Apple Distribution' certificate..."
-          security find-identity -v -p codesigning
+      #     echo "--- 2. CHECKING KEYCHAIN IDENTITIES ---"
+      #     echo "Looking for 'Apple Distribution' certificate..."
+      #     security find-identity -v -p codesigning
 
-          echo "--- 3. CHECKING EXPORT OPTIONS PLIST ---"
-          echo "Displaying contents of ios/GithubActionsExportOptions.plist:"
-          cat ios/GithubActionsExportOptions.plist
+      #     echo "--- 3. CHECKING EXPORT OPTIONS PLIST ---"
+      #     echo "Displaying contents of ios/GithubActionsExportOptions.plist:"
+      #     cat ios/GithubActionsExportOptions.plist
 
-      - name: Build iOS App
-        run: flutter build ios
+      - name: Build iOS IPA 
+        uses: cedvdb/action-flutter-build-ios@v1
+        with:
+          # always use --export-options-plist=ios/GithubActionsExportOptions.plist
+          build-cmd: flutter build ipa --release --flavor dev --export-options-plist=ios/GithubActionsExportOptions.plist
+          certificate-base64: ${{ secrets.IOS_BUILD_CERTIFICATE_BASE64 }}
+          certificate-password: ${{ secrets.IOS_P12_PASSWORD }}
+          provisioning-profile-base64: ${{ secrets.BUILD_PROVISION_PROFILE_BASE64 }}
+          keychain-password: ${{ secrets.IOS_GITHUB_KEYCHAIN_PASSWORD }}
 
       # - name: Build iOS IPA (Signed)
       #   if: env.SHOULD_SIGN_IOS == 'true'
