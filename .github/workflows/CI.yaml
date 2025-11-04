@@ -238,5 +238,5 @@ jobs:
         if: env.SHOULD_SIGN_IOS == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: release-ipa--${{ env.RELEASE_NAME }}-${{ env.BUILD_TIMESTAMP }}
+          name: release-ipa-${{ env.RELEASE_NAME }}-${{ env.BUILD_TIMESTAMP }}
           path: build/ios/ipa/*.ipa
