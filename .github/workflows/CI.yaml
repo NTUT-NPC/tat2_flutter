@@ -214,7 +214,7 @@ jobs:
           app-path: 'build/ios/ipa/*.ipa' 
           issuer-id: ${{ secrets.IOS_APPSTORE_API_ISSUER_ID}}
           api-key-id: ${{ secrets.IOS_APPSTORE_API_KEY_ID }}
-          api-private-key: ${{ secrets.IOS_APPSTORE_API_AUTHKEY_P8_BASE64 }}
+          api-private-key: ${{ secrets.IOS_APPSTORE_API_PRIVATE_KEY }}
 
 
       # IPA file detection.
