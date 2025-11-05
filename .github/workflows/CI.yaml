@@ -37,7 +37,7 @@ on:
 jobs:
   build-android:
     name: Build Flutter (Android)
-    if: github.event_name != 'workflow_dispatch' || inputs.build_android == 'true'
+    if: github.event_name != 'workflow_dispatch' || "${{inputs.build_android}}" == 'true'
     runs-on: ubuntu-latest
     
     steps:
@@ -137,7 +137,7 @@ jobs:
 
   build-ios:
     name: Build Flutter (iOS)
-    if: github.event_name != 'workflow_dispatch' || inputs.build_ios == 'true'
+    if: github.event_name != 'workflow_dispatch' || "${{inputs.build_ios}}" == 'true'
     runs-on: macos-latest
 
     steps:
